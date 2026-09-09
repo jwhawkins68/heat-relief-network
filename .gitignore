@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Environment variables — never commit real secrets/credentials
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# Logs
+npm-debug.log*
+*.log
+
+# Build output (if the frontend ever gets a build step)
+dist/
+build/

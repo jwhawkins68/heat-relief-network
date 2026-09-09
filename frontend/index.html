@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heat Relief Network</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="app-header">
+  <h1>🌡️ Heat Relief Network</h1>
+  <nav>
+    <a href="admin.html">Org / Admin portal →</a>
+  </nav>
+</header>
+
+<main>
+  <div id="alert-banner"></div>
+
+  <form class="filters" id="filters-form">
+    <div class="field">
+      <label for="region">Region (for alerts)</label>
+      <input type="text" id="region" name="region" placeholder="e.g. Los Angeles County">
+    </div>
+    <div class="field">
+      <label for="lat">Latitude</label>
+      <input type="number" step="any" id="lat" name="lat" placeholder="34.05">
+    </div>
+    <div class="field">
+      <label for="lon">Longitude</label>
+      <input type="number" step="any" id="lon" name="lon" placeholder="-118.24">
+    </div>
+    <div class="field">
+      <label for="radius_m">Radius (m)</label>
+      <input type="number" id="radius_m" name="radius_m" value="8000" min="500" step="500">
+    </div>
+    <div class="field">
+      <label for="type">Type</label>
+      <select id="type" name="type">
+        <option value="">All types</option>
+        <option value="cooling_center">Cooling center</option>
+        <option value="water_station">Water station</option>
+        <option value="shade">Shade</option>
+        <option value="splash_pad">Splash pad</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="open_only">&nbsp;</label>
+      <label style="flex-direction: row; align-items: center; gap: 0.35rem; display: flex; font-size: 0.85rem; color: var(--color-text);">
+        <input type="checkbox" id="open_only" name="open_only" style="width: auto;">
+        Open now only
+      </label>
+    </div>
+    <button type="button" id="use-location-btn" class="secondary">📍 Use my location</button>
+    <button type="submit">Search</button>
+  </form>
+
+  <div class="layout">
+    <div id="site-list">
+      <p class="empty-state">Loading sites…</p>
+    </div>
+    <div id="map"></div>
+  </div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

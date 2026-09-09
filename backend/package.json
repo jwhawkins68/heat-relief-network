@@ -1,0 +1,17 @@
+{
+  "name": "heat-relief-network-backend",
+  "version": "0.1.0",
+  "description": "API for the Heat Relief Network — sites, inventory, alerts, matching",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5"
+  }
+}
