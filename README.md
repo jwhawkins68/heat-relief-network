@@ -36,13 +36,24 @@ heat-relief-network/
 
 ## Getting started (backend)
 
+Needs **PostgreSQL 17+** locally (see `TOOLS.md` — Homebrew's current
+`postgis` package doesn't ship extension files for Postgres 16 anymore, so
+16 will fail on `CREATE EXTENSION postgis`).
+
 ```bash
 cd backend
 cp .env.example .env      # fill in your local Postgres URL
 npm install
+export DATABASE_URL=postgres://<your-user>@localhost:5432/heat_relief
+createdb heat_relief
 psql $DATABASE_URL -f src/db/schema.sql
 npm run dev
 ```
+
+Note: `$DATABASE_URL` in your `.env` file is only read by the Node app
+itself (via `dotenv`) — it's *not* automatically loaded into your shell.
+`export` it yourself (as above) any time you want to run a raw `psql`
+command against the same database.
 
 API will be live at `http://localhost:4000`. Try:
 

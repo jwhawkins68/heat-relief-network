@@ -20,8 +20,20 @@ what needs to be installed/running and why. Updated as the project grows.
 
 ## Database
 
-- **PostgreSQL** — stores sites, orgs, alerts, volunteers, inventory, etc.
-  Can run locally or on a managed host (e.g. Supabase, RDS, Railway).
+- **PostgreSQL 17+** — stores sites, orgs, alerts, volunteers, inventory,
+  etc. Can run locally or on a managed host (e.g. Supabase, RDS, Railway).
+  **Must be 17 or newer**: Homebrew's `postgis` package (as of this
+  writing) only ships extension files for Postgres 17/18, so a Postgres 16
+  install will fail with `extension "postgis" is not available` even
+  though the `postgis` formula itself is installed. If you're on Homebrew
+  Postgres 16, switch with:
+  ```bash
+  brew install postgresql@17
+  brew services stop postgresql@16
+  brew services start postgresql@17
+  echo 'export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"' >> ~/.zprofile
+  source ~/.zprofile
+  ```
 - **PostGIS** (a Postgres extension) — adds location/distance features,
   used for "find sites near me" searches.
 
