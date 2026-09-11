@@ -34,6 +34,28 @@
   <div id="org-sites-container">
     <p class="empty-state">Enter an organization ID above to load its sites.</p>
   </div>
+
+  <div class="admin-panel" style="margin-top: 1.5rem;">
+    <h2 style="margin-top:0;">🔥 Priority areas — where to focus outreach</h2>
+    <p class="hint">
+      Areas ranked by a heat-vulnerability score (heat index, % elderly, % low-income,
+      % without AC) combined with how far the nearest <em>open</em> site is. An area
+      with no open resource nearby ranks above an equally vulnerable one with a
+      cooling center down the street. This is a transparent, rule-based score today
+      — see <code>backend/src/services/riskScore.js</code> for the plan to replace it
+      with a trained model once real outcome data exists.
+    </p>
+    <div class="filters" style="margin-bottom: 0.75rem;">
+      <div class="field">
+        <label for="risk-region">Region</label>
+        <input type="text" id="risk-region" placeholder="e.g. Los Angeles County">
+      </div>
+      <button type="button" id="load-risk-areas-btn">Load priority areas</button>
+    </div>
+    <div id="risk-areas-container">
+      <p class="empty-state">Click "Load priority areas" to rank areas by need.</p>
+    </div>
+  </div>
 </main>
 
 <script src="js/config.js"></script>
