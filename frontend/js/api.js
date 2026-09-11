@@ -62,3 +62,14 @@ function fetchAlerts(region) {
 function fetchOrgSites(orgId) {
   return apiRequest(`/api/orgs/${orgId}/sites`);
 }
+
+/** GET /api/risk-areas?region= — areas ranked by need (heat + vulnerability + resource gap) */
+function fetchRiskAreas(region) {
+  const query = region ? `?region=${encodeURIComponent(region)}` : '';
+  return apiRequest(`/api/risk-areas${query}`);
+}
+
+/** POST /api/risk-areas/:id/recompute — recompute one area's base vulnerability score */
+function recomputeRiskArea(id) {
+  return apiRequest(`/api/risk-areas/${id}/recompute`, { method: 'POST' });
+}

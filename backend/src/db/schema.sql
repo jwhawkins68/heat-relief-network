@@ -100,6 +100,32 @@ CREATE TABLE users (
   created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ─────────────────────────────────────────────
+-- Areas (zip/tract-level heat vulnerability + priority scoring)
+-- ─────────────────────────────────────────────
+-- Feeds the "match high-heat areas to the people who need resources most"
+-- feature. `risk_score` is a slow-moving base vulnerability score (heat +
+-- demographics), recomputed periodically — see backend/src/services/riskScore.js.
+-- Real-time resource-gap adjustment (nearest open site) is computed at
+-- request time in GET /api/risk-areas, not stored here, since site status
+-- changes far more often than an area's demographics do.
+CREATE TABLE areas (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name                  TEXT NOT NULL,          -- e.g. "90011" or "Downtown"
+  region                TEXT,                   -- matches alerts.region
+  centroid              GEOGRAPHY(POINT, 4326) NOT NULL,
+  population            INTEGER,
+  pct_elderly           NUMERIC CHECK (pct_elderly BETWEEN 0 AND 100),
+  pct_low_income        NUMERIC CHECK (pct_low_income BETWEEN 0 AND 100),
+  pct_no_ac             NUMERIC CHECK (pct_no_ac BETWEEN 0 AND 100),
+  heat_index_f          NUMERIC,                -- current/forecast heat index, °F
+  risk_score            NUMERIC,                -- 0-100, computed
+  risk_score_updated_at TIMESTAMPTZ,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX areas_centroid_idx ON areas USING GIST (centroid);
+
 -- Example query the AI agent's search_sites tool would run:
 -- Find open sites within 5km of a point, ordered by distance
 --

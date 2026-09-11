@@ -20,8 +20,20 @@ what needs to be installed/running and why. Updated as the project grows.
 
 ## Database
 
-- **PostgreSQL** — stores sites, orgs, alerts, volunteers, inventory, etc.
-  Can run locally or on a managed host (e.g. Supabase, RDS, Railway).
+- **PostgreSQL 17+** — stores sites, orgs, alerts, volunteers, inventory,
+  etc. Can run locally or on a managed host (e.g. Supabase, RDS, Railway).
+  **Must be 17 or newer**: Homebrew's `postgis` package (as of this
+  writing) only ships extension files for Postgres 17/18, so a Postgres 16
+  install will fail with `extension "postgis" is not available` even
+  though the `postgis` formula itself is installed. If you're on Homebrew
+  Postgres 16, switch with:
+  ```bash
+  brew install postgresql@17
+  brew services stop postgresql@16
+  brew services start postgresql@17
+  echo 'export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"' >> ~/.zprofile
+  source ~/.zprofile
+  ```
 - **PostGIS** (a Postgres extension) — adds location/distance features,
   used for "find sites near me" searches.
 
@@ -38,8 +50,25 @@ what needs to be installed/running and why. Updated as the project grows.
 
 ## Local dev environment
 
-- **Windows Command Prompt** — the terminal being used to run backend
-  commands.
+- **macOS Terminal + Homebrew** — `brew install node`, `brew install
+  postgresql@16 postgis`, `brew services start postgresql@16`. Xcode
+  Command Line Tools provide `git`.
+- **Git + GitHub** — version control. Repo:
+  `github.com/jwhawkins68/heat-relief-network`, using a
+  main/develop/feature-branch/PR workflow.
+
+## AI / priority-area matching feature
+
+- **Custom rule-based scoring function** (`backend/src/services/riskScore.js`)
+  — a lightweight, transparent "heat vulnerability index" (weighted
+  composite of heat index + demographic factors), not a trained model.
+  No new runtime dependency — plain JS.
+- **Not yet used, but the planned upgrade path once real outcome data
+  exists:** a small trained model (scikit-learn or LightGBM/XGBoost
+  gradient-boosted tree trained in Python) exported to **ONNX** and run in
+  Node via `onnxruntime-node` — or its logic translated directly into the
+  same scoring function if it stays simple enough (e.g. logistic
+  regression coefficients).
 
 ## Planned but not yet wired in (stubbed in the code)
 
@@ -52,4 +81,4 @@ what needs to be installed/running and why. Updated as the project grows.
   portal can have real logins.
 
 ---
-*Last updated: 2026-09-09*
+*Last updated: 2026-09-11*

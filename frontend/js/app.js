@@ -13,6 +13,7 @@ const DEFAULT_ZOOM = 4;
 
 let map;
 let markerLayer;
+let riskLayer;
 
 function initMap() {
   map = L.map('map').setView(DEFAULT_CENTER, DEFAULT_ZOOM);
@@ -21,6 +22,40 @@ function initMap() {
     attribution: '&copy; OpenStreetMap contributors',
   }).addTo(map);
   markerLayer = L.layerGroup().addTo(map);
+  riskLayer = L.layerGroup(); // not added to the map until the toggle is checked
+}
+
+/** Red-orange-yellow scale for a 0-100 priority score. */
+function riskColor(score) {
+  if (score >= 70) return '#b3261e'; // critical
+  if (score >= 45) return '#c1440e'; // high
+  if (score >= 20) return '#b4740e'; // moderate
+  return '#6b8f4e'; // low
+}
+
+async function loadRiskAreas() {
+  riskLayer.clearLayers();
+  try {
+    const areas = await fetchRiskAreas();
+    areas.forEach((area) => {
+      if (area.lat == null || area.lon == null) return;
+      const circle = L.circle([area.lat, area.lon], {
+        radius: 900,
+        color: riskColor(area.priority_score),
+        fillColor: riskColor(area.priority_score),
+        fillOpacity: 0.35,
+        weight: 1,
+      }).bindPopup(
+        `<strong>${escapeHtml(area.name)}</strong><br>Priority score: ${area.priority_score}` +
+          (area.nearest_open_site
+            ? `<br>Nearest open site: ${escapeHtml(area.nearest_open_site.name)}`
+            : '<br>No open site nearby')
+      );
+      riskLayer.addLayer(circle);
+    });
+  } catch (err) {
+    console.warn('Failed to load priority areas:', err.message);
+  }
 }
 
 function typeLabel(type) {
@@ -270,4 +305,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('use-location-btn').addEventListener('click', useMyLocation);
+
+  document.getElementById('show_risk_areas').addEventListener('change', (e) => {
+    if (e.target.checked) {
+      riskLayer.addTo(map);
+      if (riskLayer.getLayers().length === 0) loadRiskAreas();
+    } else {
+      map.removeLayer(riskLayer);
+    }
+  });
 });
