@@ -22,16 +22,20 @@
 
   <form class="filters" id="filters-form">
     <div class="field">
+      <label for="zip">ZIP code</label>
+      <input type="text" id="zip" name="zip" placeholder="e.g. 77051" inputmode="numeric" pattern="[0-9]{5}" maxlength="5">
+    </div>
+    <div class="field">
       <label for="region">Region (for alerts)</label>
-      <input type="text" id="region" name="region" placeholder="e.g. Los Angeles County">
+      <input type="text" id="region" name="region" placeholder="e.g. Harris County">
     </div>
     <div class="field">
-      <label for="lat">Latitude</label>
-      <input type="number" step="any" id="lat" name="lat" placeholder="34.05">
+      <label for="lat">Latitude (advanced)</label>
+      <input type="number" step="any" id="lat" name="lat" placeholder="29.67">
     </div>
     <div class="field">
-      <label for="lon">Longitude</label>
-      <input type="number" step="any" id="lon" name="lon" placeholder="-118.24">
+      <label for="lon">Longitude (advanced)</label>
+      <input type="number" step="any" id="lon" name="lon" placeholder="-95.37">
     </div>
     <div class="field">
       <label for="radius_m">Radius (m)</label>

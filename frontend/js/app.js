@@ -85,7 +85,9 @@ function formatDistance(meters) {
 function readFilters() {
   const form = document.getElementById('filters-form');
   const data = new FormData(form);
+  const zip = (data.get('zip') || '').trim();
   return {
+    zip: zip || undefined,
     lat: data.get('lat') || undefined,
     lon: data.get('lon') || undefined,
     radius_m: data.get('radius_m') || undefined,
@@ -98,8 +100,26 @@ async function loadSites() {
   const listEl = document.getElementById('site-list');
   listEl.innerHTML = '<p class="empty-state">Loading sites…</p>';
 
+  const filters = readFilters();
+
+  // A ZIP code takes priority over manually-entered lat/lon: resolve it to
+  // coordinates first (and write them into the advanced lat/lon fields, so
+  // the map still re-centers on the ZIP even when zero sites are nearby).
+  if (filters.zip) {
+    try {
+      const place = await geocodeZip(filters.zip);
+      document.getElementById('lat').value = place.lat;
+      document.getElementById('lon').value = place.lon;
+      filters.lat = place.lat;
+      filters.lon = place.lon;
+    } catch (err) {
+      listEl.innerHTML = `<p class="error-state">${err.message}</p>`;
+      return;
+    }
+  }
+
   try {
-    const sites = await fetchSites(readFilters());
+    const sites = await fetchSites(filters);
     state.sites = sites;
     renderSiteList(sites);
     renderMarkers(sites);

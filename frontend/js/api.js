@@ -39,6 +39,11 @@ function fetchSites(params = {}) {
   return apiRequest(`/api/sites${qs ? `?${qs}` : ''}`);
 }
 
+/** GET /api/geocode/zip/:zip — resolve a ZIP code to lat/lon */
+function geocodeZip(zip) {
+  return apiRequest(`/api/geocode/zip/${encodeURIComponent(zip)}`);
+}
+
 /** GET /api/sites/:id — full detail including inventory */
 function fetchSiteDetail(id) {
   return apiRequest(`/api/sites/${id}`);
