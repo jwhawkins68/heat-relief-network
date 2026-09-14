@@ -4,25 +4,32 @@
 -- Census ACS / local heat-vulnerability-index data before relying on this
 -- for anything beyond a demo.
 --
+-- Pilot area: Texas (Houston, Dallas, Fort Worth, Austin, San Antonio) —
+-- replaces the earlier Los Angeles County placeholder pilot areas so the
+-- demo matches the project's actual target region. pct_no_ac is seeded low
+-- across the board (unlike the old LA numbers) because central AC is
+-- near-universal in Texas housing — the real heat-vulnerability driver
+-- here is poverty/elderly population more than AC access.
+--
 -- Run with:
 --   psql $DATABASE_URL -f src/db/seed_areas.sql
 
 INSERT INTO areas (name, region, centroid, population, pct_elderly, pct_low_income, pct_no_ac, heat_index_f)
 VALUES
-  ('90011 - South LA', 'Los Angeles County', ST_MakePoint(-118.2584, 34.0072)::geography,
-   45000, 11, 38, 42, 108),
+  ('77051 - Sunnyside (Houston)', 'Harris County', ST_MakePoint(-95.371847, 29.669321)::geography,
+   29000, 13, 35, 8, 109),
 
-  ('90065 - Glassell Park', 'Los Angeles County', ST_MakePoint(-118.2378, 34.1097)::geography,
-   22000, 14, 22, 25, 101),
+  ('75215 - South Dallas / Fair Park', 'Dallas County', ST_MakePoint(-96.766835, 32.770411)::geography,
+   15000, 15, 40, 9, 107),
 
-  ('90210 - Beverly Hills', 'Los Angeles County', ST_MakePoint(-118.4004, 34.0901)::geography,
-   21000, 22, 4, 3, 99),
+  ('76104 - Near Southeast (Fort Worth)', 'Tarrant County', ST_MakePoint(-97.318374, 32.733204)::geography,
+   24000, 12, 38, 10, 106),
 
-  ('91331 - Pacoima', 'Los Angeles County', ST_MakePoint(-118.4108, 34.2589)::geography,
-   58000, 9, 33, 35, 112),
+  ('78724 - East Austin', 'Travis County', ST_MakePoint(-97.674011, 30.314870)::geography,
+   20000, 10, 28, 6, 104),
 
-  ('90033 - Boyle Heights', 'Los Angeles County', ST_MakePoint(-118.2087, 34.0407)::geography,
-   39000, 17, 41, 30, 105);
+  ('78207 - West Side (San Antonio)', 'Bexar County', ST_MakePoint(-98.530072, 29.404375)::geography,
+   28000, 16, 42, 9, 105);
 
 -- After seeding, compute initial scores with:
 --   npm run recompute-risk
