@@ -152,9 +152,8 @@ Already applied as the live assignee field in Jira.
 
 ### Site Directory / Texas pilot pivot (SCRUM-27, In Review)
 
-The project's pilot/demo region was originally Los Angeles County (placeholder
-data). The user is in Houston, TX, so the pilot region was changed to **statewide
-Texas** for real-world accuracy:
+The project's pilot/demo region is **statewide Texas** (Houston, Dallas, Fort
+Worth, Austin, San Antonio), matching the team's real-world location:
 
 - `seed_areas.sql` replaced — 5 Texas areas (Houston/Sunnyside, Dallas/South
   Dallas-Fair Park, Fort Worth/Near Southeast, Austin/East Austin, San
@@ -175,7 +174,7 @@ ZIP. Added:
   fallback for any other US ZIP.
 - A "ZIP code" field on the resident search form (raw lat/lon fields kept, now
   labeled "advanced"). Map re-centers on the ZIP even with zero results nearby.
-- Region field placeholder updated from "Los Angeles County" → "Harris County".
+- Region field placeholder is "Harris County", matching the Texas pilot.
 
 ### Priority Access and Resident Matching (SCRUM-29, Sprint 2 — code written, not yet run)
 
@@ -210,27 +209,21 @@ already committed at 23 points.
 
 ## 7. ⚠️ Outstanding action items (things only you can do)
 
-1. **Run the Texas seed data against your actual local database** (confirmed via
-   the running backend that this has *not* happened yet — `/api/sites` is empty and
-   `/api/risk-areas` still returns the old LA rows):
-   ```
-   psql $DATABASE_URL -f backend/src/db/seed_areas.sql
-   psql $DATABASE_URL -f backend/src/db/seed_sites.sql
-   npm run recompute-risk --prefix backend
-   ```
-   Then apply the priority-access tables and demo invite codes (SCRUM-29):
-   ```
-   psql $DATABASE_URL -f backend/src/db/migration_priority_access.sql
-   psql $DATABASE_URL -f backend/src/db/seed_invites.sql
-   ```
-   Demo codes seeded: `HEAT2026`, `COOLTX24`, `RELIEF99`.
-2. **Push the branch and open a PR into `develop`:**
-   ```
-   git push -u origin feature/site-directory-seed
-   ```
-3. Once both are done, screenshots in both decks (map overlay, admin priority
-   table, admin recompute, Jira backlog board) can be refreshed with real Texas
-   data and current assignee info — ask for that once you've done 1–2 above.
+1. ~~Run the Texas seed data against your actual local database~~ **Done
+   (2026-09-15).** The DB's `areas` table still had stale, duplicated Los Angeles
+   placeholder rows from earlier testing (no foreign keys pointed at them), so
+   those were truncated before reseeding. Local DB now has: 5 Texas areas
+   (risk-scored — Sunnyside/Houston and South Dallas tie highest at 30.6, East
+   Austin lowest at 24.8), 11 real Texas sites (all `status = unknown`, as
+   designed), and 3 demo invite codes (`HEAT2026`, `COOLTX24`, `RELIEF99`). No
+   Los Angeles data remains anywhere in the running app or database.
+2. ~~Push the branch and open a PR into `develop`~~ **Done (2026-09-15).**
+   `feature/site-directory-seed` pushed; PR #2 open into `develop`, covering
+   SCRUM-27/28/29.
+3. Screenshots in both decks (map overlay, admin priority table, admin
+   recompute, Jira backlog board) still show the old Los Angeles data — now
+   unblocked to refresh against the live Texas data above. Ask for that
+   whenever it's convenient.
 
 ## 8. Presentations delivered
 
@@ -246,8 +239,9 @@ in sync with everything above:
   version control, use case diagram, Jira backlog (27 items), Site Directory pivot
   slide, Team Assignments slide, per-story description slides for Sprint 0, conclusion.
 - Both open/close crediting **"Team 5"** (not an individual) per explicit request.
-- Both still show the **old Los Angeles** map/admin screenshots — pending item 1
-  above.
+- Both still show the **old Los Angeles** map/admin screenshots — the live app
+  and database are now fully Texas-based (see §7), so these are ready to
+  refresh whenever requested.
 
 ## 9. Notes for whoever continues this
 

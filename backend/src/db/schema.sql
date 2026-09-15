@@ -76,7 +76,7 @@ CREATE TABLE volunteer_shifts (
 -- ─────────────────────────────────────────────
 CREATE TABLE alerts (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  region          TEXT NOT NULL,          -- e.g. NWS zone or city name
+  region          TEXT NOT NULL,          -- COUNTY name, e.g. 'Harris County' (never a city)
   severity        TEXT NOT NULL CHECK (severity IN ('advisory', 'warning', 'emergency')),
   message         TEXT NOT NULL,
   source          TEXT NOT NULL DEFAULT 'NWS',
@@ -93,7 +93,7 @@ CREATE TABLE users (
   phone                 TEXT UNIQUE,       -- primary channel for SMS-first users
   email                 TEXT UNIQUE,
   preferred_language    TEXT DEFAULT 'en',
-  notify_region         TEXT,              -- opt-in region for alerts
+  notify_region         TEXT,              -- opt-in county for alerts (matches alerts.region)
   notify_sms            BOOLEAN DEFAULT false,
   notify_push           BOOLEAN DEFAULT false,
   notify_email          BOOLEAN DEFAULT false,
@@ -111,8 +111,8 @@ CREATE TABLE users (
 -- changes far more often than an area's demographics do.
 CREATE TABLE areas (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name                  TEXT NOT NULL,          -- e.g. "90011" or "Downtown"
-  region                TEXT,                   -- matches alerts.region
+  name                  TEXT NOT NULL,          -- e.g. "77051" or "Downtown"
+  region                TEXT,                   -- COUNTY name; matches alerts.region
   centroid              GEOGRAPHY(POINT, 4326) NOT NULL,
   population            INTEGER,
   pct_elderly           NUMERIC CHECK (pct_elderly BETWEEN 0 AND 100),

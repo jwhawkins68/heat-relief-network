@@ -4,10 +4,8 @@
 -- Census ACS / local heat-vulnerability-index data before relying on this
 -- for anything beyond a demo.
 --
--- Pilot area: Texas (Houston, Dallas, Fort Worth, Austin, San Antonio) —
--- replaces the earlier Los Angeles County placeholder pilot areas so the
--- demo matches the project's actual target region. pct_no_ac is seeded low
--- across the board (unlike the old LA numbers) because central AC is
+-- Pilot area: statewide Texas (Houston, Dallas, Fort Worth, Austin, San
+-- Antonio). pct_no_ac is seeded low across the board because central AC is
 -- near-universal in Texas housing — the real heat-vulnerability driver
 -- here is poverty/elderly population more than AC access.
 --
