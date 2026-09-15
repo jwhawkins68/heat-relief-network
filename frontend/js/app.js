@@ -314,8 +314,27 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+/**
+ * Prefill the search form from the URL, so a "Show on map" link from the
+ * registration results lands on the right place instead of the default view.
+ */
+function applyDeepLink() {
+  const params = new URLSearchParams(window.location.search);
+  const lat = params.get('lat');
+  const lon = params.get('lon');
+  const zip = params.get('zip');
+
+  if (zip) document.getElementById('zip').value = zip;
+  if (lat && lon) {
+    document.getElementById('lat').value = lat;
+    document.getElementById('lon').value = lon;
+  }
+  return Boolean((lat && lon) || zip);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
+  applyDeepLink();
   loadSites();
 
   document.getElementById('filters-form').addEventListener('submit', (e) => {

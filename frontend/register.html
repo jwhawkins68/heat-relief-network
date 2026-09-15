@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heat Relief Network — Register for Priority Access</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="app-header">
+  <h1>🌡️ Heat Relief Network</h1>
+  <nav>
+    <a href="index.html">← Find a site</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ── Step 1: invite gate ───────────────────────────── -->
+  <div class="admin-panel" id="invite-panel">
+    <h2 style="margin-top:0;">Register for priority access</h2>
+    <p class="hint">
+      Priority access is offered through partner organizations — clinics, libraries,
+      community centers, and outreach teams. If one of them gave you an invite code,
+      enter it below to get started.
+    </p>
+    <form id="invite-form" class="filters">
+      <div class="field" style="flex: 1; min-width: 220px;">
+        <label for="invite_code">Invite code</label>
+        <input type="text" id="invite_code" name="invite_code" placeholder="e.g. HEAT2026"
+               maxlength="8" autocomplete="off" spellcheck="false"
+               style="text-transform: uppercase; letter-spacing: 0.12em;" required>
+        <span class="field-error" id="invite_code-error" hidden></span>
+      </div>
+      <button type="submit" id="invite-submit">Continue</button>
+    </form>
+    <p class="hint" style="margin-bottom:0;">
+      Don't have a code? You can still <a href="index.html">search for cooling centers
+      and water stations</a> without registering — no code needed.
+    </p>
+  </div>
+
+  <!-- ── Step 2: intake form ───────────────────────────── -->
+  <div class="admin-panel" id="intake-panel" hidden style="margin-top: 1.5rem;">
+    <h2 style="margin-top:0;">Tell us about your household</h2>
+    <p class="hint" id="invited-by"></p>
+    <p class="hint">
+      These answers decide how quickly outreach teams reach you during a heat
+      emergency, and which kind of site we point you to. Every question below
+      explains why we ask it.
+    </p>
+
+    <form id="intake-form">
+      <div class="filters">
+        <div class="field" style="flex: 1; min-width: 220px;">
+          <label for="full_name">Full name</label>
+          <input type="text" id="full_name" name="full_name" autocomplete="name" required>
+          <span class="field-error" id="full_name-error" hidden></span>
+        </div>
+        <div class="field" style="flex: 1; min-width: 220px;">
+          <label for="street_address">Street address <span style="font-weight:400;">(optional)</span></label>
+          <input type="text" id="street_address" name="street_address" autocomplete="street-address">
+          <span class="why-we-ask">Helps an outreach team find you. You can leave this blank and still register.</span>
+        </div>
+      </div>
+
+      <div class="filters">
+        <div class="field">
+          <label for="city">City</label>
+          <input type="text" id="city" name="city" autocomplete="address-level2">
+        </div>
+        <div class="field">
+          <label for="zip">ZIP code</label>
+          <input type="text" id="zip" name="zip" inputmode="numeric" pattern="[0-9]{5}"
+                 maxlength="5" autocomplete="postal-code" required>
+          <span class="why-we-ask">Used to find relief sites near you.</span>
+          <span class="field-error" id="zip-error" hidden></span>
+        </div>
+        <div class="field">
+          <label for="age">Your age</label>
+          <input type="number" id="age" name="age" min="0" max="120" required>
+          <span class="why-we-ask">Heat affects older adults far more severely, so age raises your priority.</span>
+          <span class="field-error" id="age-error" hidden></span>
+        </div>
+        <div class="field">
+          <label for="household_size">People in household</label>
+          <input type="number" id="household_size" name="household_size" min="1" max="20" value="1" required>
+          <span class="why-we-ask">Used with income to compare against the federal poverty level.</span>
+          <span class="field-error" id="household_size-error" hidden></span>
+        </div>
+      </div>
+
+      <div class="filters">
+        <div class="field" style="flex: 1; min-width: 240px;">
+          <label for="employment_status">Employment status</label>
+          <select id="employment_status" name="employment_status" required>
+            <option value="">Choose one…</option>
+            <option value="outdoor_worker">Work outdoors (construction, landscaping, delivery, farm)</option>
+            <option value="full_time_indoor">Work full-time, mostly indoors</option>
+            <option value="part_time">Work part-time</option>
+            <option value="unemployed">Not currently working</option>
+            <option value="unable_to_work">Unable to work</option>
+            <option value="retired">Retired</option>
+            <option value="student">Student</option>
+          </select>
+          <span class="why-we-ask">Outdoor work is the single biggest on-the-job heat risk, and it changes which site type we recommend.</span>
+          <span class="field-error" id="employment_status-error" hidden></span>
+        </div>
+
+        <div class="field" style="flex: 1; min-width: 240px;">
+          <label for="insurance_status">Health insurance</label>
+          <select id="insurance_status" name="insurance_status" required>
+            <option value="">Choose one…</option>
+            <option value="personal">Personal or employer insurance</option>
+            <option value="government_assistance">Government assistance (Medicaid, Medicare, CHIP)</option>
+            <option value="none">No insurance</option>
+          </select>
+          <span class="why-we-ask">Without coverage, heat illness is more likely to go untreated until it becomes an emergency.</span>
+          <span class="field-error" id="insurance_status-error" hidden></span>
+        </div>
+
+        <div class="field" style="flex: 1; min-width: 200px;">
+          <label for="annual_income">Annual household income (USD)</label>
+          <input type="number" id="annual_income" name="annual_income" min="0" step="100" required>
+          <span class="why-we-ask">Compared against the federal poverty level for your household size. Staff see only a range — never this exact number.</span>
+          <span class="field-error" id="annual_income-error" hidden></span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label style="flex-direction: row; align-items: center; gap: 0.45rem; display: flex; font-size: 0.9rem;">
+          <input type="checkbox" id="children_under_5" name="children_under_5" style="width: auto;">
+          A child under 5 lives in my household
+        </label>
+        <span class="why-we-ask">Young children overheat faster than adults, and it changes which sites we suggest.</span>
+      </div>
+
+      <div class="consent-box">
+        <label>
+          <input type="checkbox" id="consent" name="consent">
+          <span>
+            I agree to share these answers with the Heat Relief Network and its partner
+            organizations so they can prioritize and contact me during heat emergencies.
+            My answers are stored by the network; partner staff can see my name, contact
+            details, priority level, and an income <em>range</em> — never my exact income.
+            I can ask for my record to be removed at any time.
+          </span>
+        </label>
+        <span class="field-error" id="consent-error" hidden></span>
+      </div>
+
+      <button type="submit" id="intake-submit">Register and find my sites</button>
+      <span class="save-msg" id="intake-msg"></span>
+    </form>
+  </div>
+
+  <!-- ── Step 3: results ───────────────────────────────── -->
+  <div class="admin-panel" id="results-panel" hidden style="margin-top: 1.5rem;">
+    <h2 style="margin-top:0;">You're registered</h2>
+    <p id="results-intro"></p>
+
+    <div style="margin: 1rem 0;">
+      <span class="tier-badge" id="tier-badge"></span>
+    </div>
+
+    <h3 style="margin-bottom:0.25rem;">Why you were prioritized</h3>
+    <ul class="reason-list" id="reason-list"></ul>
+
+    <h3 style="margin-top:1.5rem;">Sites matched to you</h3>
+    <div id="match-container"></div>
+
+    <p class="hint" id="match-note" hidden></p>
+
+    <p class="hint" style="margin-top:1.5rem;">
+      <strong>What happens next:</strong> a partner organization may contact you before
+      or during the next heat emergency. Site hours and open/closed status change
+      through the day — check the <a href="index.html">map</a> before heading out.
+      To update or remove your details, contact the organization that invited you.
+    </p>
+    <p class="hint">
+      Curious how this was decided? The full scoring rubric is public:
+      <code>docs/NEED-SCORING.md</code>.
+    </p>
+  </div>
+
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/register.js"></script>
+</body>
+</html>

@@ -266,3 +266,73 @@ table.admin-table tr:last-child td { border-bottom: none; }
   font-size: 0.78rem;
   color: var(--color-text-muted);
 }
+
+/* ─────────────────────────────────────────────
+   Priority Access (SCRUM-29)
+   Tier colours intentionally echo the priority-area scale so the resident
+   queue and the area ranking read as one system.
+   ───────────────────────────────────────────── */
+.tier-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tier-badge.tier-1 { background: #b3261e; color: #fff; }
+.tier-badge.tier-2 { background: #f2b705; color: #3d2f00; }
+.tier-badge.tier-3 { background: #dfe4e8; color: #33404a; }
+
+.why-we-ask {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #5c6a75;
+}
+
+.field-error {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  color: #b3261e;
+}
+.field input.invalid,
+.field select.invalid { border-color: #b3261e; }
+
+.consent-box {
+  margin: 1rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid #d5dce2;
+  border-radius: 8px;
+  background: #f7f9fa;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+.consent-box label {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  cursor: pointer;
+}
+.consent-box input[type="checkbox"] { width: auto; margin-top: 0.2rem; flex: none; }
+
+.reason-list { margin: 0.5rem 0 0; padding-left: 1.15rem; }
+.reason-list li { margin-bottom: 0.3rem; line-height: 1.45; }
+
+.match-group { margin-bottom: 1.5rem; }
+.match-group h3 { margin: 0 0 0.15rem; }
+.match-group .match-why { margin: 0 0 0.6rem; font-size: 0.85rem; color: #5c6a75; }
+
+.invite-code-display {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.6rem;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+  padding: 0.6rem 0.9rem;
+  background: #f7f9fa;
+  border: 1px dashed #b9c4cc;
+  border-radius: 8px;
+  display: inline-block;
+}

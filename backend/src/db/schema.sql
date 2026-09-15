@@ -135,3 +135,10 @@ CREATE INDEX areas_centroid_idx ON areas USING GIST (centroid);
 -- WHERE status = 'open'
 --   AND ST_DWithin(location, ST_MakePoint($1, $2)::geography, 5000)
 -- ORDER BY distance_m ASC;
+
+-- ─────────────────────────────────────────────
+-- Priority Access & Resident Matching (SCRUM-29)
+-- Kept in its own file so it can also be applied to an existing database.
+-- Run this file with psql (\ir is a psql directive, not plain SQL).
+-- ─────────────────────────────────────────────
+\ir migration_priority_access.sql

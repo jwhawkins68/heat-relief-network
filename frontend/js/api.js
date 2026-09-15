@@ -78,3 +78,52 @@ function fetchRiskAreas(region) {
 function recomputeRiskArea(id) {
   return apiRequest(`/api/risk-areas/${id}/recompute`, { method: 'POST' });
 }
+
+// ─────────────────────────────────────────────
+// Priority Access (SCRUM-29)
+// ─────────────────────────────────────────────
+
+/** GET /api/invites/:code/validate — check an invite code without consuming it */
+function validateInvite(code) {
+  return apiRequest(`/api/invites/${encodeURIComponent(code)}/validate`);
+}
+
+/**
+ * POST /api/residents/register — redeem an invite and register a resident.
+ * Resolves to { resident, priority, recommendations, fallback_sites, note }.
+ * Rejects with an Error carrying `.fieldErrors` when the server returns
+ * per-field validation messages.
+ */
+async function registerResident(payload) {
+  const res = await fetch(`${API_BASE}/api/residents/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(body.error || `Registration failed (${res.status})`);
+    if (body.errors) err.fieldErrors = body.errors;
+    throw err;
+  }
+  return body;
+}
+
+/** POST /api/invites — issue a new single-use invite code for an org */
+function issueInvite(orgId, label) {
+  return apiRequest('/api/invites', {
+    method: 'POST',
+    body: JSON.stringify({ org_id: orgId, issued_to_label: label || null }),
+  });
+}
+
+/** GET /api/residents?tier=&city= — priority-ranked queue (income is redacted server-side) */
+function fetchResidents(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') query.set(k, v);
+  });
+  const qs = query.toString();
+  return apiRequest(`/api/residents${qs ? `?${qs}` : ''}`);
+}
