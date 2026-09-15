@@ -13,6 +13,7 @@ const DEFAULT_ZOOM = 4;
 
 let map;
 let markerLayer;
+let riskLayer;
 
 function initMap() {
   map = L.map('map').setView(DEFAULT_CENTER, DEFAULT_ZOOM);
@@ -21,6 +22,40 @@ function initMap() {
     attribution: '&copy; OpenStreetMap contributors',
   }).addTo(map);
   markerLayer = L.layerGroup().addTo(map);
+  riskLayer = L.layerGroup(); // not added to the map until the toggle is checked
+}
+
+/** Red-orange-yellow scale for a 0-100 priority score. */
+function riskColor(score) {
+  if (score >= 70) return '#b3261e'; // critical
+  if (score >= 45) return '#c1440e'; // high
+  if (score >= 20) return '#b4740e'; // moderate
+  return '#6b8f4e'; // low
+}
+
+async function loadRiskAreas() {
+  riskLayer.clearLayers();
+  try {
+    const areas = await fetchRiskAreas();
+    areas.forEach((area) => {
+      if (area.lat == null || area.lon == null) return;
+      const circle = L.circle([area.lat, area.lon], {
+        radius: 900,
+        color: riskColor(area.priority_score),
+        fillColor: riskColor(area.priority_score),
+        fillOpacity: 0.35,
+        weight: 1,
+      }).bindPopup(
+        `<strong>${escapeHtml(area.name)}</strong><br>Priority score: ${area.priority_score}` +
+          (area.nearest_open_site
+            ? `<br>Nearest open site: ${escapeHtml(area.nearest_open_site.name)}`
+            : '<br>No open site nearby')
+      );
+      riskLayer.addLayer(circle);
+    });
+  } catch (err) {
+    console.warn('Failed to load priority areas:', err.message);
+  }
 }
 
 function typeLabel(type) {
@@ -50,7 +85,9 @@ function formatDistance(meters) {
 function readFilters() {
   const form = document.getElementById('filters-form');
   const data = new FormData(form);
+  const zip = (data.get('zip') || '').trim();
   return {
+    zip: zip || undefined,
     lat: data.get('lat') || undefined,
     lon: data.get('lon') || undefined,
     radius_m: data.get('radius_m') || undefined,
@@ -63,8 +100,26 @@ async function loadSites() {
   const listEl = document.getElementById('site-list');
   listEl.innerHTML = '<p class="empty-state">Loading sites…</p>';
 
+  const filters = readFilters();
+
+  // A ZIP code takes priority over manually-entered lat/lon: resolve it to
+  // coordinates first (and write them into the advanced lat/lon fields, so
+  // the map still re-centers on the ZIP even when zero sites are nearby).
+  if (filters.zip) {
+    try {
+      const place = await geocodeZip(filters.zip);
+      document.getElementById('lat').value = place.lat;
+      document.getElementById('lon').value = place.lon;
+      filters.lat = place.lat;
+      filters.lon = place.lon;
+    } catch (err) {
+      listEl.innerHTML = `<p class="error-state">${err.message}</p>`;
+      return;
+    }
+  }
+
   try {
-    const sites = await fetchSites(readFilters());
+    const sites = await fetchSites(filters);
     state.sites = sites;
     renderSiteList(sites);
     renderMarkers(sites);
@@ -259,8 +314,28 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+/**
+ * Prefill the search form from the URL, so a "Show on map" link from the
+ * registration results lands on the right place instead of the default view.
+ */
+function applyDeepLink() {
+  const params = new URLSearchParams(window.location.search);
+  const lat = params.get('lat');
+  const lon = params.get('lon');
+  const zip = params.get('zip');
+
+  if (zip) document.getElementById('zip').value = zip;
+  if (lat && lon) {
+    document.getElementById('lat').value = lat;
+    document.getElementById('lon').value = lon;
+  }
+  return Boolean((lat && lon) || zip);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
+  populateCountyList();
+  applyDeepLink();
   loadSites();
 
   document.getElementById('filters-form').addEventListener('submit', (e) => {
@@ -270,4 +345,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('use-location-btn').addEventListener('click', useMyLocation);
+
+  document.getElementById('show_risk_areas').addEventListener('change', (e) => {
+    if (e.target.checked) {
+      riskLayer.addTo(map);
+      if (riskLayer.getLayers().length === 0) loadRiskAreas();
+    } else {
+      map.removeLayer(riskLayer);
+    }
+  });
 });

@@ -76,7 +76,7 @@ CREATE TABLE volunteer_shifts (
 -- ─────────────────────────────────────────────
 CREATE TABLE alerts (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  region          TEXT NOT NULL,          -- e.g. NWS zone or city name
+  region          TEXT NOT NULL,          -- COUNTY name, e.g. 'Harris County' (never a city)
   severity        TEXT NOT NULL CHECK (severity IN ('advisory', 'warning', 'emergency')),
   message         TEXT NOT NULL,
   source          TEXT NOT NULL DEFAULT 'NWS',
@@ -93,12 +93,38 @@ CREATE TABLE users (
   phone                 TEXT UNIQUE,       -- primary channel for SMS-first users
   email                 TEXT UNIQUE,
   preferred_language    TEXT DEFAULT 'en',
-  notify_region         TEXT,              -- opt-in region for alerts
+  notify_region         TEXT,              -- opt-in county for alerts (matches alerts.region)
   notify_sms            BOOLEAN DEFAULT false,
   notify_push           BOOLEAN DEFAULT false,
   notify_email          BOOLEAN DEFAULT false,
   created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- ─────────────────────────────────────────────
+-- Areas (zip/tract-level heat vulnerability + priority scoring)
+-- ─────────────────────────────────────────────
+-- Feeds the "match high-heat areas to the people who need resources most"
+-- feature. `risk_score` is a slow-moving base vulnerability score (heat +
+-- demographics), recomputed periodically — see backend/src/services/riskScore.js.
+-- Real-time resource-gap adjustment (nearest open site) is computed at
+-- request time in GET /api/risk-areas, not stored here, since site status
+-- changes far more often than an area's demographics do.
+CREATE TABLE areas (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name                  TEXT NOT NULL,          -- e.g. "77051" or "Downtown"
+  region                TEXT,                   -- COUNTY name; matches alerts.region
+  centroid              GEOGRAPHY(POINT, 4326) NOT NULL,
+  population            INTEGER,
+  pct_elderly           NUMERIC CHECK (pct_elderly BETWEEN 0 AND 100),
+  pct_low_income        NUMERIC CHECK (pct_low_income BETWEEN 0 AND 100),
+  pct_no_ac             NUMERIC CHECK (pct_no_ac BETWEEN 0 AND 100),
+  heat_index_f          NUMERIC,                -- current/forecast heat index, °F
+  risk_score            NUMERIC,                -- 0-100, computed
+  risk_score_updated_at TIMESTAMPTZ,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX areas_centroid_idx ON areas USING GIST (centroid);
 
 -- Example query the AI agent's search_sites tool would run:
 -- Find open sites within 5km of a point, ordered by distance
@@ -109,3 +135,10 @@ CREATE TABLE users (
 -- WHERE status = 'open'
 --   AND ST_DWithin(location, ST_MakePoint($1, $2)::geography, 5000)
 -- ORDER BY distance_m ASC;
+
+-- ─────────────────────────────────────────────
+-- Priority Access & Resident Matching (SCRUM-29)
+-- Kept in its own file so it can also be applied to an existing database.
+-- Run this file with psql (\ir is a psql directive, not plain SQL).
+-- ─────────────────────────────────────────────
+\ir migration_priority_access.sql

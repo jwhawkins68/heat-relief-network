@@ -34,6 +34,76 @@
   <div id="org-sites-container">
     <p class="empty-state">Enter an organization ID above to load its sites.</p>
   </div>
+
+  <div class="admin-panel" style="margin-top: 1.5rem;">
+    <h2 style="margin-top:0;">🔥 Priority areas — where to focus outreach</h2>
+    <p class="hint">
+      Areas ranked by a heat-vulnerability score (heat index, % elderly, % low-income,
+      % without AC) combined with how far the nearest <em>open</em> site is. An area
+      with no open resource nearby ranks above an equally vulnerable one with a
+      cooling center down the street. This is a transparent, rule-based score today
+      — see <code>backend/src/services/riskScore.js</code> for the plan to replace it
+      with a trained model once real outcome data exists.
+    </p>
+    <div class="filters" style="margin-bottom: 0.75rem;">
+      <div class="field">
+        <label for="risk-region">County</label>
+        <input type="text" id="risk-region" list="county-list"
+               placeholder="e.g. Harris County" autocomplete="off">
+        <datalist id="county-list"></datalist>
+      </div>
+      <button type="button" id="load-risk-areas-btn">Load priority areas</button>
+    </div>
+    <div id="risk-areas-container">
+      <p class="empty-state">Click "Load priority areas" to rank areas by need.</p>
+    </div>
+  </div>
+  <div class="admin-panel" id="priority-access-panel" style="margin-top: 1.5rem;">
+    <h2 style="margin-top:0;">🎟️ Priority access — invites &amp; resident queue</h2>
+    <p class="hint">
+      Residents join through a single-use invite code your organization hands out.
+      Once registered they're scored on age, income relative to the federal poverty
+      level, employment, and insurance status, then ranked here so outreach reaches
+      the highest-need people first. The rubric is documented in
+      <code>docs/NEED-SCORING.md</code>.
+      <strong>Exact incomes are never shown</strong> — only a band.
+    </p>
+
+    <div class="filters" style="margin-bottom: 0.75rem;">
+      <div class="field" style="flex: 1; min-width: 240px;">
+        <label for="invite_label">Issue an invite — who is it for? (optional)</label>
+        <input type="text" id="invite_label" placeholder="e.g. Sunnyside clinic walk-ins">
+      </div>
+      <button type="button" id="issue-invite-btn">Issue invite code</button>
+    </div>
+    <div id="invite-result" hidden style="margin-bottom: 1.25rem;">
+      <span class="invite-code-display" id="invite-code-value"></span>
+      <button type="button" class="secondary" id="copy-invite-btn">Copy</button>
+      <span class="save-msg" id="invite-msg"></span>
+    </div>
+
+    <div class="filters" style="margin-bottom: 0.75rem;">
+      <div class="field">
+        <label for="queue-tier">Priority tier</label>
+        <select id="queue-tier">
+          <option value="">All tiers</option>
+          <option value="1">1 — Urgent</option>
+          <option value="2">2 — Elevated</option>
+          <option value="3">3 — Standard</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="queue-city">City</label>
+        <input type="text" id="queue-city" placeholder="e.g. Houston">
+      </div>
+      <button type="button" id="load-queue-btn">Load resident queue</button>
+    </div>
+
+    <div id="resident-queue-container">
+      <p class="empty-state">Click "Load resident queue" to see registered residents by priority.</p>
+    </div>
+  </div>
+
 </main>
 
 <script src="js/config.js"></script>

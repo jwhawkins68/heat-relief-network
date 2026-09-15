@@ -13,6 +13,7 @@
 <header class="app-header">
   <h1>🌡️ Heat Relief Network</h1>
   <nav>
+    <a href="register.html">Register for priority access</a>
     <a href="admin.html">Org / Admin portal →</a>
   </nav>
 </header>
@@ -22,16 +23,22 @@
 
   <form class="filters" id="filters-form">
     <div class="field">
-      <label for="region">Region (for alerts)</label>
-      <input type="text" id="region" name="region" placeholder="e.g. Los Angeles County">
+      <label for="zip">ZIP code</label>
+      <input type="text" id="zip" name="zip" placeholder="e.g. 77051" inputmode="numeric" pattern="[0-9]{5}" maxlength="5">
     </div>
     <div class="field">
-      <label for="lat">Latitude</label>
-      <input type="number" step="any" id="lat" name="lat" placeholder="34.05">
+      <label for="region">County (for alerts)</label>
+      <input type="text" id="region" name="region" list="county-list"
+             placeholder="e.g. Harris County" autocomplete="off">
+      <datalist id="county-list"></datalist>
     </div>
     <div class="field">
-      <label for="lon">Longitude</label>
-      <input type="number" step="any" id="lon" name="lon" placeholder="-118.24">
+      <label for="lat">Latitude (advanced)</label>
+      <input type="number" step="any" id="lat" name="lat" placeholder="29.67">
+    </div>
+    <div class="field">
+      <label for="lon">Longitude (advanced)</label>
+      <input type="number" step="any" id="lon" name="lon" placeholder="-95.37">
     </div>
     <div class="field">
       <label for="radius_m">Radius (m)</label>
@@ -52,6 +59,13 @@
       <label style="flex-direction: row; align-items: center; gap: 0.35rem; display: flex; font-size: 0.85rem; color: var(--color-text);">
         <input type="checkbox" id="open_only" name="open_only" style="width: auto;">
         Open now only
+      </label>
+    </div>
+    <div class="field">
+      <label for="show_risk_areas">&nbsp;</label>
+      <label style="flex-direction: row; align-items: center; gap: 0.35rem; display: flex; font-size: 0.85rem; color: var(--color-text);">
+        <input type="checkbox" id="show_risk_areas" style="width: auto;">
+        🔥 Show priority areas
       </label>
     </div>
     <button type="button" id="use-location-btn" class="secondary">📍 Use my location</button>
