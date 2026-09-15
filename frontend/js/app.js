@@ -1,6 +1,6 @@
 // Heat Relief Network — resident-facing map + list view.
 // Wires the UI to the real backend (GET /api/sites, GET /api/sites/:id,
-// GET /api/alerts) instead of the mock data used in the earlier prototype.
+// GET /api/alerts).
 
 const state = {
   sites: [],
@@ -96,6 +96,9 @@ function readFilters() {
   };
 }
 
+// Statewide sweep used only as a fallback when a nearby search finds nothing.
+const STATEWIDE_RADIUS_M = 400000; // ~250 miles
+
 async function loadSites() {
   const listEl = document.getElementById('site-list');
   listEl.innerHTML = '<p class="empty-state">Loading sites…</p>';
@@ -119,21 +122,50 @@ async function loadSites() {
   }
 
   try {
-    const sites = await fetchSites(filters);
+    let sites = await fetchSites(filters);
+    let note = null;
+
+    // The pilot has only a handful of sites statewide, so a tight radius around
+    // a real location (e.g. "Use my location") usually returns nothing at all.
+    // Rather than render an empty list that reads as "the app is broken", widen
+    // the search and say so plainly — the same fallback the registration
+    // matcher uses in services/serviceMatch.js.
+    if (sites.length === 0 && filters.lat && filters.lon) {
+      const searchedMi = Math.round((Number(filters.radius_m) || 8000) / 1609.34);
+      const wider = await fetchSites({ ...filters, radius_m: STATEWIDE_RADIUS_M });
+      if (wider.length > 0) {
+        sites = wider;
+        note = `No relief sites within ${searchedMi} miles of that location — showing the nearest ones instead.`;
+      }
+    }
+
     state.sites = sites;
-    renderSiteList(sites);
+    renderSiteList(sites, note);
     renderMarkers(sites);
   } catch (err) {
     listEl.innerHTML = `<p class="error-state">Couldn't load sites: ${err.message}. Is the backend running at ${API_BASE}?</p>`;
   }
 }
 
-function renderSiteList(sites) {
+function renderSiteList(sites, note) {
   const listEl = document.getElementById('site-list');
   listEl.innerHTML = '';
 
+  if (note) {
+    const noteEl = document.createElement('p');
+    noteEl.className = 'hint';
+    noteEl.textContent = note;
+    listEl.appendChild(noteEl);
+  }
+
   if (sites.length === 0) {
-    listEl.innerHTML = '<p class="empty-state">No sites match these filters yet.</p>';
+    const emptyEl = document.createElement('p');
+    emptyEl.className = 'empty-state';
+    emptyEl.textContent =
+      'No relief sites found. The pilot currently covers Houston, Dallas, ' +
+      'Fort Worth, Austin and San Antonio — try a ZIP code in one of those ' +
+      'cities, or clear the filters to see every site.';
+    listEl.appendChild(emptyEl);
     return;
   }
 
