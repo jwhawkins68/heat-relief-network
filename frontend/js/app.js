@@ -334,6 +334,7 @@ function applyDeepLink() {
 
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
+  populateCountyList();
   applyDeepLink();
   loadSites();
 

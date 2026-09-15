@@ -196,6 +196,8 @@ async function recomputeArea(btn) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  populateCountyList();
+
   document.getElementById('org-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const orgId = document.getElementById('org_id').value.trim();

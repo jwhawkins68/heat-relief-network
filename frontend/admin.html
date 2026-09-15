@@ -47,8 +47,10 @@
     </p>
     <div class="filters" style="margin-bottom: 0.75rem;">
       <div class="field">
-        <label for="risk-region">Region</label>
-        <input type="text" id="risk-region" placeholder="e.g. Harris County">
+        <label for="risk-region">County</label>
+        <input type="text" id="risk-region" list="county-list"
+               placeholder="e.g. Harris County" autocomplete="off">
+        <datalist id="county-list"></datalist>
       </div>
       <button type="button" id="load-risk-areas-btn">Load priority areas</button>
     </div>

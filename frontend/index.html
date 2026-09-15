@@ -27,8 +27,10 @@
       <input type="text" id="zip" name="zip" placeholder="e.g. 77051" inputmode="numeric" pattern="[0-9]{5}" maxlength="5">
     </div>
     <div class="field">
-      <label for="region">Region (for alerts)</label>
-      <input type="text" id="region" name="region" placeholder="e.g. Harris County">
+      <label for="region">County (for alerts)</label>
+      <input type="text" id="region" name="region" list="county-list"
+             placeholder="e.g. Harris County" autocomplete="off">
+      <datalist id="county-list"></datalist>
     </div>
     <div class="field">
       <label for="lat">Latitude (advanced)</label>

@@ -74,6 +74,31 @@ function fetchRiskAreas(region) {
   return apiRequest(`/api/risk-areas${query}`);
 }
 
+/**
+ * The `region` filter on /api/alerts and /api/risk-areas matches on COUNTY name
+ * (e.g. "Harris County"), not city name — see CLAUDE.md "Region = county".
+ * Returns the distinct counties actually present in the data, so the UI never
+ * hardcodes a county list.
+ */
+async function fetchCounties() {
+  const areas = await fetchRiskAreas();
+  return [...new Set(areas.map((a) => a.region).filter(Boolean))].sort();
+}
+
+/** Fill a <datalist> with the counties available in the data. Never throws. */
+async function populateCountyList(datalistId = 'county-list') {
+  const list = document.getElementById(datalistId);
+  if (!list) return;
+  try {
+    const counties = await fetchCounties();
+    list.innerHTML = counties
+      .map((c) => `<option value="${c.replace(/"/g, '&quot;')}"></option>`)
+      .join('');
+  } catch (err) {
+    console.warn('Could not load county list:', err);
+  }
+}
+
 /** POST /api/risk-areas/:id/recompute — recompute one area's base vulnerability score */
 function recomputeRiskArea(id) {
   return apiRequest(`/api/risk-areas/${id}/recompute`, { method: 'POST' });
