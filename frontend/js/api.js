@@ -191,3 +191,8 @@ function runHeatWatch(dryRun = false) {
 function fetchDispatchPlan(hours = 12) {
   return apiRequest(`/api/agents/dispatch/plan?hours=${encodeURIComponent(hours)}`);
 }
+
+/** POST /api/agents/site-freshness/run — judge status confidence; expire retires stale claims */
+function runSiteFreshness(expire = false) {
+  return apiRequest(`/api/agents/site-freshness/run${expire ? '?expire=true' : ''}`, { method: 'POST' });
+}

@@ -131,7 +131,7 @@ async function loadSites() {
     // the search and say so plainly — the same fallback the registration
     // matcher uses in services/serviceMatch.js.
     if (sites.length === 0 && filters.lat && filters.lon) {
-      const searchedMi = Math.round((Number(filters.radius_m) || 8000) / 1609.34);
+      const searchedMi = Math.round((Number(filters.radius_m) || 40234) / 1609.34);
       const wider = await fetchSites({ ...filters, radius_m: STATEWIDE_RADIUS_M });
       if (wider.length > 0) {
         sites = wider;

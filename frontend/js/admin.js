@@ -365,8 +365,10 @@ document.addEventListener('DOMContentLoaded', () => {
 const SEVERITY_TIER = { emergency: 1, warning: 2, advisory: 3 };
 
 function agentBusy(on, label) {
-  ['heat-watch-preview-btn', 'heat-watch-run-btn', 'dispatch-btn'].forEach((id) => {
-    document.getElementById(id).disabled = on;
+  ['heat-watch-preview-btn', 'heat-watch-run-btn', 'dispatch-btn',
+   'freshness-btn', 'freshness-expire-btn'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = on;
   });
   if (on) {
     document.getElementById('agent-output').innerHTML =
@@ -509,4 +511,63 @@ document.addEventListener('DOMContentLoaded', () => {
     const hours = Number(document.getElementById('dispatch-hours').value) || 12;
     callAgent(() => fetchDispatchPlan(hours), 'Building outreach plan…', renderDispatch);
   });
+});
+
+// ─────────────────────────────────────────────
+// Site Status Freshness agent (SCRUM-48)
+//
+// Ranks what to re-confirm first. The distance half of the priority engine
+// only works if site status is current, so this is the agent that keeps the
+// other two fed.
+// ─────────────────────────────────────────────
+
+const CONFIDENCE_TIER = { expired: 1, unverifiable: 1, unconfirmed: 2, aging: 2, fresh: 3 };
+
+function renderFreshness(r) {
+  const out = document.getElementById('agent-output');
+
+  const bands = Object.entries(r.by_confidence)
+    .map(([k, v]) => `${v} ${escapeHtml(k)}`).join(' · ');
+
+  const head = `
+    <p class="hint">
+      Assessed ${r.sites_assessed} sites — ${bands}.
+      ${r.expire_enabled
+        ? `<strong>${r.claims_retired} expired claim(s) retired to "unknown".</strong>`
+        : r.would_retire
+          ? `<strong>${r.would_retire} claim(s) are past believable</strong> — use “Retire expired claims” to clear them.`
+          : ''}
+    </p>`;
+
+  if (!r.confirm_first.length) {
+    out.innerHTML = head + '<p class="empty-state">Every site status is current. Nothing to confirm.</p>';
+    return;
+  }
+
+  const cards = r.confirm_first.map((s, i) => `
+    <div class="site-card">
+      <div class="site-card-top">
+        <strong>${i + 1}. ${escapeHtml(s.name)}</strong>
+        <span class="tier-badge tier-${CONFIDENCE_TIER[s.confidence] || 3}">${escapeHtml(s.confidence)}</span>
+      </div>
+      <div class="site-meta">
+        Reads “${escapeHtml(s.status)}”${s.age_hours !== null ? ` · confirmed ${s.age_hours}h ago` : ' · never confirmed'}
+        · ${escapeHtml(s.area || 'no area matched')} · ${s.area_heat_f ?? '?'}°F
+        · confirm-first score ${s.confirmation_priority}
+        ${s.under_heat ? ' · <strong>under heat pressure</strong>' : ''}
+        ${s.retired ? ' · <strong>retired to unknown</strong>' : ''}
+      </div>
+      <div class="site-meta">${escapeHtml(s.address || '')}</div>
+      ${reasonList(s.reasons)}
+    </div>`).join('');
+
+  out.innerHTML = head + cards;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('freshness-btn').addEventListener('click', () =>
+    callAgent(() => runSiteFreshness(false), 'Checking site status freshness…', renderFreshness));
+
+  document.getElementById('freshness-expire-btn').addEventListener('click', () =>
+    callAgent(() => runSiteFreshness(true), 'Retiring expired claims…', renderFreshness));
 });

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import requireAdmin from '../middleware/requireAdmin.js';
 import { runHeatWatch } from '../services/heatWatchAgent.js';
 import { planDispatch } from '../services/dispatchAgent.js';
+import { runSiteFreshness } from '../services/siteFreshnessAgent.js';
 
 const router = Router();
 
@@ -38,6 +39,23 @@ router.get('/dispatch/plan', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Dispatch agent failed:', err.message);
     res.status(500).json({ error: 'Dispatch planning failed' });
+  }
+});
+
+/**
+ * POST /api/agents/site-freshness/run?expire=true
+ * Judges how far each site's status can still be trusted and ranks what to
+ * re-confirm first. `expire` must be passed explicitly to actually retire
+ * stale claims — retiring destroys something an organization entered, so the
+ * agent reports and waits by default.
+ */
+router.post('/site-freshness/run', requireAdmin, async (req, res) => {
+  const expire = req.query.expire === 'true';
+  try {
+    res.json(await runSiteFreshness({ expire }));
+  } catch (err) {
+    console.error('Site freshness agent failed:', err.message);
+    res.status(500).json({ error: 'Site freshness run failed' });
   }
 });
 

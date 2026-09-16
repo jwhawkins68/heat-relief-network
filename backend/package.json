@@ -9,7 +9,8 @@
     "dev": "node --watch src/server.js",
     "recompute-risk": "node src/scripts/recomputeAllRiskScores.js",
     "test": "node --test test/*.test.js",
-    "heat-watch": "node src/scripts/runHeatWatch.js"
+    "heat-watch": "node src/scripts/runHeatWatch.js",
+    "site-freshness": "node src/scripts/runSiteFreshness.js"
   },
   "dependencies": {
     "express": "^4.19.2",
