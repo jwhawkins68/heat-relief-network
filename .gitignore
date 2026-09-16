@@ -20,3 +20,7 @@ npm-debug.log*
 # Build output (if the frontend ever gets a build step)
 dist/
 build/
+
+# Local admin credentials — never commit
+ADMIN-ACCESS.local.md
+*.local.md

@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Heat Relief Network — Org Portal</title>
+<title>HeatSafe — Org Portal</title>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
 <header class="app-header">
-  <h1>🌡️ Heat Relief Network — Org Portal</h1>
+  <h1>🌡️ HeatSafe — Org Portal</h1>
   <nav>
     <a href="index.html">← Resident view</a>
   </nav>
@@ -18,21 +18,27 @@
 <main>
   <div class="admin-panel">
     <p class="hint">
-      ⚠️ There's no login yet (auth on the admin routes is stubbed on the backend —
-      see the project README). For now, paste your organization's ID below to load
-      its sites.
+      🔒 This portal is restricted. Enter your organization's access token to
+      manage sites, issue invite codes, and view the resident priority queue.
+      The token is held for this browser tab only and is never stored on disk.
     </p>
     <form id="org-form" class="filters">
+      <div class="field" style="flex: 1; min-width: 240px;">
+        <label for="admin_token">Organization access token</label>
+        <input type="password" id="admin_token" name="admin_token"
+               autocomplete="current-password" required>
+      </div>
       <div class="field" style="flex: 1; min-width: 260px;">
         <label for="org_id">Organization ID (UUID)</label>
-        <input type="text" id="org_id" name="org_id" placeholder="e.g. 6f2f9b2e-..." required>
+        <input type="text" id="org_id" name="org_id" required>
       </div>
-      <button type="submit">Load sites</button>
+      <button type="submit">Sign in &amp; load sites</button>
     </form>
+    <p class="save-msg" id="admin-auth-msg"></p>
   </div>
 
   <div id="org-sites-container">
-    <p class="empty-state">Enter an organization ID above to load its sites.</p>
+    <p class="empty-state">Sign in above to load your organization’s sites.</p>
   </div>
 
   <div class="admin-panel" style="margin-top: 1.5rem;">

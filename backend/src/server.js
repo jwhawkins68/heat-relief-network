@@ -25,4 +25,4 @@ app.use('/api/invites', invitesRouter);
 app.use('/api/residents', residentsRouter);
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`Heat Relief Network API listening on :${PORT}`));
+app.listen(PORT, () => console.log(`HeatSafe API listening on :${PORT}`));
