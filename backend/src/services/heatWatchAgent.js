@@ -29,7 +29,13 @@ const NWS = {
 
 // A vulnerable area with no open relief nearby is materially worse off than an
 // equally hot area with a staffed cooling center down the street.
-const HIGH_RISK_SCORE = 40;        // risk_score at/above this counts as high
+// CALIBRATION: the pilot's five areas currently score 24.8-30.6. Texas housing
+// is almost universally air-conditioned, so pct_no_ac -- 30% of the weight in
+// riskScore.js -- sits at 6-10% and pulls every score down. A threshold of 40
+// would therefore never fire against real data. 28 puts roughly the top half of
+// the observed distribution above the line. REVISIT once SCRUM-19 lands live
+// Census figures, because pct_elderly and pct_low_income will shift the spread.
+const HIGH_RISK_SCORE = 28;        // risk_score at/above this counts as high
 const NO_RELIEF_RADIUS_M = 8000;   // ~5 miles
 
 const SEVERITY_RANK = { advisory: 1, warning: 2, emergency: 3 };

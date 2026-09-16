@@ -23,7 +23,9 @@ import pool from '../db/pool.js';
 const AREA_MATCH_RADIUS_M = 12000;  // a site serves areas within ~7.5 miles
 const RESIDENT_RADIUS_M = 8000;     // ~5 miles around an area centroid
 const MAX_RESIDENTS_PER_SHIFT = 8;  // a realistic number of check-ins per shift
-const HIGH_PRIORITY_SCORE = 40;     // an uncovered area at/above this is a gap worth reporting
+// Matches HIGH_RISK_SCORE in heatWatchAgent.js — calibrated to the pilot's
+// observed 24.8-30.6 range, not picked round. See that file for the reasoning.
+const HIGH_PRIORITY_SCORE = 28;     // an uncovered area at/above this is a gap worth reporting
 
 /** Scheduled shifts inside the planning window, with volunteer and site detail. */
 async function loadShifts(hoursAhead) {
