@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "recompute-risk": "node src/scripts/recomputeAllRiskScores.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "heat-watch": "node src/scripts/runHeatWatch.js"
   },
   "dependencies": {
     "express": "^4.19.2",

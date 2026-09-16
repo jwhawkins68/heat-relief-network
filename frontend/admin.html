@@ -110,6 +110,32 @@
     </div>
   </div>
 
+  <div class="admin-panel" id="agents-panel" style="margin-top: 1.5rem;">
+    <h2 style="margin-top:0;">🤖 Agents &mdash; they run on their own</h2>
+    <p class="hint">
+      Neither of these waits to be asked. The <strong>Heat Watch</strong> agent runs on a
+      schedule, reads current conditions for every pilot area and decides whether to raise an
+      alert &mdash; escalating a neighbourhood when it is both vulnerable and has no open site
+      nearby. The <strong>Dispatch Planner</strong> reads the volunteer shifts already on the
+      books and builds an outreach plan, highest-need neighbourhood first. Both explain every
+      decision; neither acts on a resident without saying why.
+    </p>
+
+    <div class="filters" style="margin-bottom: 0.75rem;">
+      <button type="button" id="heat-watch-preview-btn" class="secondary">Preview heat watch (writes nothing)</button>
+      <button type="button" id="heat-watch-run-btn">Run heat watch</button>
+      <div class="field">
+        <label for="dispatch-hours">Plan window (hours)</label>
+        <input type="number" id="dispatch-hours" value="12" min="1" max="168" step="1">
+      </div>
+      <button type="button" id="dispatch-btn">Build outreach plan</button>
+    </div>
+
+    <div id="agent-output">
+      <p class="empty-state">Run an agent to see what it decided and why.</p>
+    </div>
+  </div>
+
 </main>
 
 <script src="js/config.js"></script>

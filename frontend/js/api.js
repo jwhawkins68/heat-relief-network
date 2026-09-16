@@ -2,10 +2,35 @@
 // Every function returns a Promise that resolves to parsed JSON, or throws
 // an Error with a readable message on failure.
 
+// Admin token for the org-facing routes. Held in sessionStorage only, so it is
+// cleared when the tab closes and is never written to disk. Resident-facing
+// pages never set it and never send it.
+function getAdminToken() {
+  try {
+    return sessionStorage.getItem('hrn_admin_token') || '';
+  } catch {
+    return '';
+  }
+}
+
+function setAdminToken(token) {
+  try {
+    if (token) sessionStorage.setItem('hrn_admin_token', token);
+    else sessionStorage.removeItem('hrn_admin_token');
+  } catch {
+    // private browsing / storage disabled — the token just won't persist
+  }
+}
+
 async function apiRequest(path, options = {}) {
+  const token = getAdminToken();
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'x-admin-token': token } : {}),
+      ...(options.headers || {}),
+    },
   });
 
   if (!res.ok) {
@@ -151,4 +176,18 @@ function fetchResidents(params = {}) {
   });
   const qs = query.toString();
   return apiRequest(`/api/residents${qs ? `?${qs}` : ''}`);
+}
+
+// ─────────────────────────────────────────────
+// Agents (SCRUM-38 / SCRUM-39)
+// ─────────────────────────────────────────────
+
+/** POST /api/agents/heat-watch/run — one watch cycle. dryRun writes nothing. */
+function runHeatWatch(dryRun = false) {
+  return apiRequest(`/api/agents/heat-watch/run${dryRun ? '?dry_run=true' : ''}`, { method: 'POST' });
+}
+
+/** GET /api/agents/dispatch/plan?hours= — outreach plan over scheduled shifts */
+function fetchDispatchPlan(hours = 12) {
+  return apiRequest(`/api/agents/dispatch/plan?hours=${encodeURIComponent(hours)}`);
 }
