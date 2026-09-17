@@ -1,8 +1,34 @@
-# Heat Relief Network
+# HeatSafe
 
-Community platform + AI agent for finding cooling centers, water stations, and
-support during extreme heat. See `heat-relief-network-plan.md` (project plan)
-for full architecture and roadmap.
+Community platform and autonomous agents for finding cooling centers, water
+stations, and support during extreme heat — and for reaching the people least
+able to reach them.
+
+Piloted against **real Texas relief sites and Census area data**. The repository,
+package, and database names still say `heat-relief-network`; that is the original
+project name, kept deliberately for continuity of history. **HeatSafe** is the
+product name and appears everywhere a user can see it.
+
+Built by **Team 5** for CINS 5338/5388 — Software Project Management,
+Prairie View A&M University.
+
+---
+
+## What it does
+
+**For residents** (`frontend/index.html`) — search relief sites by ZIP code or
+current location, pick a radius in miles, see them on a map and in a list, read
+active heat alerts for a county, and register for priority access with an invite
+code.
+
+**For partner organizations** (`frontend/admin.html`) — update site status,
+see which areas need outreach most, issue and revoke invite codes, work the
+resident priority queue, and run the three agents.
+
+**On their own** — three agents that watch the data and act without being asked.
+See **[`docs/AGENTS.md`](docs/AGENTS.md)**.
+
+---
 
 ## Repo structure
 
@@ -10,95 +36,223 @@ for full architecture and roadmap.
 heat-relief-network/
 ├── backend/
 │   ├── src/
-│   │   ├── server.js          # Express app entry point
+│   │   ├── server.js                 # Express app entry point
 │   │   ├── db/
-│   │   │   ├── schema.sql     # Postgres + PostGIS schema
-│   │   │   └── pool.js        # DB connection pool
+│   │   │   ├── schema.sql            # Postgres + PostGIS schema
+│   │   │   ├── migration_priority_access.sql
+│   │   │   ├── pool.js
+│   │   │   └── seed_*.sql            # areas, sites, invites, volunteers
+│   │   ├── middleware/
+│   │   │   └── requireAdmin.js       # shared-token gate, fails closed
 │   │   ├── services/
-│   │   │   └── riskScore.js   # heat-vulnerability scoring ("model") for priority areas
+│   │   │   ├── riskScore.js          # heat-vulnerability score for AREAS
+│   │   │   ├── needScore.js          # need score for PEOPLE
+│   │   │   ├── serviceMatch.js       # resident → best service type
+│   │   │   ├── zipLookup.js
+│   │   │   ├── heatWatchAgent.js     # agent 1 — watches conditions, alerts
+│   │   │   ├── dispatchAgent.js      # agent 2 — plans volunteer outreach
+│   │   │   └── siteFreshnessAgent.js # agent 3 — judges status staleness
 │   │   ├── scripts/
-│   │   │   └── recomputeAllRiskScores.js  # batch job — run via `npm run recompute-risk`
+│   │   │   ├── recomputeAllRiskScores.js
+│   │   │   ├── runHeatWatch.js
+│   │   │   └── runSiteFreshness.js
 │   │   └── routes/
-│   │       ├── sites.js       # site search/detail/status-update — the AI agent's core tool
-│   │       ├── alerts.js      # active heat alerts by region
-│   │       ├── orgs.js        # org/admin-portal endpoints
-│   │       └── risk-areas.js  # ranks areas by heat-relief need — see riskScore.js
-│   ├── package.json
+│   │       ├── sites.js      alerts.js    orgs.js      geocode.js
+│   │       ├── risk-areas.js invites.js   residents.js agents.js
+│   ├── test/                         # node:test — run with `npm test`
 │   └── .env.example
 ├── frontend/
-│   ├── index.html             # resident-facing map + list, wired to the real API
-│   ├── admin.html             # org portal — status updates
+│   ├── index.html                    # resident map + list + alerts
+│   ├── register.html                 # invite-code priority registration
+│   ├── admin.html                    # org portal, incl. the Agents panel
 │   ├── css/styles.css
-│   ├── js/                    # config.js, api.js, app.js, admin.js
-│   └── README.md              # how to run it
+│   └── js/                           # config, api, app, admin, register
+├── docs/
+│   ├── AGENTS.md                     # the three agents, in full
+│   ├── NEED-SCORING.md               # resident scoring methodology
+│   ├── DATA-SOURCES.md               # Census/NWS provenance
+│   ├── VERIFICATION.md               # what we checked and how
+│   └── SPRINT-LOG.md
+├── start.sh  restart.sh  stop.sh     # local run scripts (Desktop shortcuts)
+├── AGILE-SCRUM.md  PROJECT_STATUS.md  TOOLS.md
 └── README.md
 ```
 
-## Getting started (backend)
+---
 
-Needs **PostgreSQL 17+** locally (see `TOOLS.md` — Homebrew's current
-`postgis` package doesn't ship extension files for Postgres 16 anymore, so
-16 will fail on `CREATE EXTENSION postgis`).
+## Getting started
+
+Needs **PostgreSQL 17+** (see `TOOLS.md` — Homebrew's current `postgis` package
+no longer ships extension files for Postgres 16, so 16 fails on
+`CREATE EXTENSION postgis`).
 
 ```bash
 cd backend
-cp .env.example .env      # fill in your local Postgres URL
+cp .env.example .env          # fill in your local Postgres URL and ADMIN_TOKEN
 npm install
+
 export DATABASE_URL=postgres://<your-user>@localhost:5432/heat_relief
 createdb heat_relief
 psql $DATABASE_URL -f src/db/schema.sql
+psql $DATABASE_URL -f src/db/migration_priority_access.sql
+
+# Seed the Texas pilot data
+psql $DATABASE_URL -f src/db/seed_areas.sql
+psql $DATABASE_URL -f src/db/seed_sites.sql
+psql $DATABASE_URL -f src/db/seed_volunteers.sql
+psql $DATABASE_URL -f src/db/seed_invites.sql
+
+npm run recompute-risk        # compute initial area risk scores
 npm run dev
 ```
 
-Note: `$DATABASE_URL` in your `.env` file is only read by the Node app
-itself (via `dotenv`) — it's *not* automatically loaded into your shell.
-`export` it yourself (as above) any time you want to run a raw `psql`
-command against the same database.
+> **`.env` is read once, at startup.** `dotenv` loads it when the process
+> boots, and `node --watch` watches imported JS modules — not `.env`. If you
+> add or change `ADMIN_TOKEN`, you must **restart the backend**; a running
+> server will not pick it up. This is the cause of the
+> "Admin access is not configured on this server" 503.
 
-API will be live at `http://localhost:4000`. Try:
+> **`$DATABASE_URL` in `.env` is not loaded into your shell.** `export` it
+> yourself (as above) any time you want to run a raw `psql` command.
+
+API is live at `http://localhost:4000`. Try:
 
 ```bash
-curl "http://localhost:4000/api/sites?lat=34.05&lon=-118.24&open_only=true"
+curl "http://localhost:4000/api/sites?lat=29.76&lon=-95.37&radius_m=40234&open_only=true"
 ```
 
-## Priority-area matching ("AI" feature)
+### Running the whole stack
 
-`GET /api/risk-areas` ranks zip/tract-level areas by how urgently they need
-outreach — combining a heat-vulnerability score (heat index, % elderly, %
-low-income, % without AC) with how far the nearest *open* site is. See
-`backend/src/services/riskScore.js` for the scoring logic and the reasoning
-for why it's a transparent rule-based composite (a "heat vulnerability
-index") rather than a trained model right now, and what real data would be
-needed to upgrade it to one (e.g. a lightweight gradient-boosted tree) later.
-It's surfaced in the org portal (`frontend/admin.html`) as a ranked table,
-and as a toggleable colored-circle overlay on the resident map
-(`frontend/index.html`).
+```bash
+./start.sh      # backend + frontend
+./restart.sh    # clean stop, then start
+./stop.sh       # stop everything on the project ports
+```
 
-To try it: seed example areas with
-`psql $DATABASE_URL -f backend/src/db/seed_areas.sql`, then
-`npm run recompute-risk` (from `backend/`) to compute their initial scores.
+These are also on the Desktop as shortcuts. `restart.sh` sources `stop.sh`
+rather than duplicating the port-killing logic, so there is one definition of
+"stop" in the repo.
 
-## What's stubbed vs. real here
+---
 
-- **Real / runnable:** Express routes, PostGIS proximity query, schema,
-  a plain HTML/CSS/JS frontend (`frontend/`) wired to the live API —
-  resident map + list view and an org status-update portal — and the
-  priority-area risk scoring described above. See `frontend/README.md`
-  for how to run the frontend.
-- **Stubbed (marked with TODO):** NWS polling job, Twilio/FCM notification
-  dispatch, auth on the admin routes (the org portal currently takes a raw
-  org ID with no login), volunteer-matching logic.
-- **Not yet started:** offline/SMS-first flow for anonymous phone-based
-  users, geocoding a resident's location to an alert region, replacing the
-  rule-based risk score with a trained model once real outcome data
-  (e.g. heat-related ER visits/911 calls by area) is available.
+## API
 
-## Next steps (maps to Phase 1 in the project plan)
+Routes marked **🔒** require the `x-admin-token` header.
 
-1. Stand up Postgres locally or on a managed host (e.g. Supabase, RDS) and
-   run the schema.
-2. Seed 10–20 real sites for your pilot area (manually is fine for MVP).
-3. ~~Wire the frontend prototype to `GET /api/sites` instead of mock
-   data.~~ Done — see `frontend/`.
-4. Add basic auth to the org routes so partners can log in and update status.
-5. Add the NWS polling job (`api.weather.gov/alerts/active?area={state}`).
+| Method | Path | What |
+|---|---|---|
+| GET | `/health` | liveness |
+| GET | `/api/sites` | search by `lat`/`lon`/`radius_m`, `open_only`, `type` |
+| GET | `/api/sites/:id` | one site |
+| PATCH | 🔒 `/api/sites/:id/status` | update open/closed/full |
+| GET | `/api/alerts` | active heat alerts by region |
+| GET | `/api/geocode/zip/:zip` | ZIP → lat/lon |
+| GET | `/api/risk-areas` | areas ranked by outreach need |
+| POST | 🔒 `/api/risk-areas/:id/recompute` | rescore one area |
+| GET | 🔒 `/api/orgs/:id/sites` | an org's sites |
+| POST | 🔒 `/api/invites` | issue an invite code |
+| GET | `/api/invites/:code/validate` | check a code (public — residents use it) |
+| PATCH | 🔒 `/api/invites/:code/revoke` | revoke |
+| GET | 🔒 `/api/invites` | list |
+| POST | `/api/residents/register` | register with an invite code |
+| GET | 🔒 `/api/residents` | priority queue, filter by tier/city |
+| GET | 🔒 `/api/residents/:id/match` | matched services for one resident |
+| POST | 🔒 `/api/agents/heat-watch/run` | `?dry_run=true` to preview |
+| GET | 🔒 `/api/agents/dispatch/plan` | `?hours=12` — read-only |
+| POST | 🔒 `/api/agents/site-freshness/run` | `?expire=true` to actually retire |
+
+---
+
+## The three scoring systems
+
+Each is a **transparent, rule-based function** — no trained model, no LLM — and
+each documents its own reasoning and upgrade path.
+
+| File | Scores | Documented in |
+|---|---|---|
+| `riskScore.js` | **areas** — heat index, % elderly, % low-income, % without AC, distance to nearest open site | this README + `docs/DATA-SOURCES.md` |
+| `needScore.js` | **people** — age, income vs. federal poverty level, employment, insurance | `docs/NEED-SCORING.md` |
+| `serviceMatch.js` | **fit** — resident → cooling center / splash pad / water station + shade | `docs/NEED-SCORING.md` |
+
+`GET /api/risk-areas` surfaces the area ranking in the org portal as a table and
+on the resident map as a toggleable overlay.
+
+---
+
+## The agents
+
+Three things that run on a schedule and act without being prompted:
+
+1. **Heat Emergency Watch** — watches conditions, opens alerts, builds the
+   contact list, highest need first. Every 30 minutes.
+2. **Outreach Dispatch Planner** — turns volunteer shifts into an assignment
+   plan and reports coverage gaps. Read-only; a coordinator decides.
+3. **Site Status Freshness** — judges how far each site's status can still be
+   trusted, with thresholds that tighten during a heat event. Reports by
+   default; retiring a claim is opt-in.
+
+Full detail, including the thresholds, the reasoning behind them, and the
+calibration mistake we caught: **[`docs/AGENTS.md`](docs/AGENTS.md)**.
+
+---
+
+## Access control
+
+Org-facing routes are gated by a **shared organization token** (`ADMIN_TOKEN`),
+checked with a timing-safe compare and sent as `x-admin-token`. It is a
+deliberate stopgap so resident PII is not world-readable — **not** per-user auth.
+Per-organization logins with change tracking are filed as **SCRUM-53**.
+
+Generate one:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Put it in `backend/.env` and **restart the backend**.
+
+---
+
+## What's real vs. stubbed
+
+**Real and runnable** — Express API, PostGIS proximity search, full schema,
+the resident and org frontends wired to the live API, invite-based priority
+registration, all three scoring functions, all three agents, seeded Texas pilot
+data, and a `node:test` suite (`npm test`).
+
+**Stubbed (marked TODO)** — Twilio/FCM notification dispatch; live NWS polling
+(SCRUM-23, in progress on `feature/SCRUM-23-live-weather-integration`).
+
+**Not started** — offline/SMS-first flow for phone-only users; per-organization
+logins (SCRUM-53); replacing any rule-based score with a trained model, which
+needs outcome data we do not have.
+
+---
+
+## From concept to pilot
+
+The project was scaffolded against **Los Angeles** placeholder data so spatial
+search had something to query. Moving to **Texas** was not cosmetic — it is
+where the team is, and demoing against placeholder data would have kept this an
+academic exercise.
+
+The pivot paid for itself immediately by exposing two real defects:
+
+- No relief sites had ever been seeded, so resident search had been returning
+  empty results for an entire sprint without anyone noticing.
+- The agent risk threshold was tuned to LA-shaped data. Texas households have
+  air conditioning at far higher rates (6–10% without, versus LA), so real
+  scores landed at 24.8–30.6 against a threshold of 40 — the agents would have
+  reported "all clear" forever. See §6 of `docs/AGENTS.md`.
+
+Both are in `docs/VERIFICATION.md`.
+
+---
+
+## Team 5
+
+D'Andre League (Scrum Master) · James Hawkins (Engineer) · Teyana Williams ·
+Ryan Tucker
+
+Board: Jira project `SCRUM` at `pvamu-heatsafe.atlassian.net`.
+Process notes: `AGILE-SCRUM.md`. Current state: `PROJECT_STATUS.md`.
