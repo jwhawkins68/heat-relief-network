@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
+import requireAdmin from '../middleware/requireAdmin.js';
 import { computeVulnerabilityScore, applyResourceGap } from '../services/riskScore.js';
 
 const router = Router();
@@ -60,7 +61,7 @@ router.get('/', async (req, res) => {
  * this would run on a schedule — see ../scripts/recomputeAllRiskScores.js
  * — or be triggered whenever heat_index_f is refreshed from a weather feed.
  */
-router.post('/:id/recompute', async (req, res) => {
+router.post('/:id/recompute', requireAdmin, async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM areas WHERE id = $1', [req.params.id]);
     const area = rows[0];

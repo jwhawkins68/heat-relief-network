@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { randomInt } from 'node:crypto';
 import pool from '../db/pool.js';
+import requireAdmin from '../middleware/requireAdmin.js';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ function generateInviteCode() {
  * Body: { org_id, issued_to_label?, expires_in_days? }
  * Issues a new single-use invite code for a partner organization.
  */
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   const { org_id, issued_to_label = null, expires_in_days = DEFAULT_EXPIRY_DAYS } = req.body;
 
   if (!org_id) {
@@ -101,7 +102,7 @@ router.get('/:code/validate', async (req, res) => {
 });
 
 /** PATCH /api/invites/:code/revoke — kill a code handed out by mistake. */
-router.patch('/:code/revoke', async (req, res) => {
+router.patch('/:code/revoke', requireAdmin, async (req, res) => {
   const code = String(req.params.code || '').trim().toUpperCase();
   try {
     const { rows } = await pool.query(
@@ -121,7 +122,7 @@ router.patch('/:code/revoke', async (req, res) => {
 });
 
 /** GET /api/invites?org_id= — codes an org has issued (admin view). */
-router.get('/', async (req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
   const { org_id } = req.query;
   try {
     const { rows } = await pool.query(

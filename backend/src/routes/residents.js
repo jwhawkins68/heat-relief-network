@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
+import requireAdmin from '../middleware/requireAdmin.js';
 import { scoreResident, incomeBand } from '../services/needScore.js';
 import { matchServices } from '../services/serviceMatch.js';
 import { resolveZip, ZipLookupError } from '../services/zipLookup.js';
@@ -211,7 +212,7 @@ router.post('/register', async (req, res) => {
  * Raw annual_income is NEVER included — only a coarse band. See
  * docs/NEED-SCORING.md for why.
  */
-router.get('/', async (req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
   const { tier, city } = req.query;
   const conditions = [];
   const values = [];
@@ -254,7 +255,7 @@ router.get('/', async (req, res) => {
  * Re-runs matching for an already-registered resident. Site status changes
  * through the day, so yesterday's answer may not be today's.
  */
-router.get('/:id/match', async (req, res) => {
+router.get('/:id/match', requireAdmin, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, full_name, age, household_size, children_under_5,

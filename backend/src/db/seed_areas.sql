@@ -1,16 +1,24 @@
--- Example seed data for the `areas` table (risk-scoring feature).
--- Manual/example data for demo purposes — same spirit as manually seeding
--- 10-20 real `sites` for a pilot area (see root README). Replace with real
--- Census ACS / local heat-vulnerability-index data before relying on this
--- for anything beyond a demo.
+-- Heat-vulnerability areas for the Heat Relief Network service region.
 --
--- Pilot area: statewide Texas (Houston, Dallas, Fort Worth, Austin, San
--- Antonio). pct_no_ac is seeded low across the board because central AC is
--- near-universal in Texas housing — the real heat-vulnerability driver
--- here is poverty/elderly population more than AC access.
+-- Region: Texas — Harris, Dallas, Tarrant, Travis and Bexar counties.
+-- `region` is always a COUNTY name (never a city) — it is the key the alerts
+-- and priority-area filters match on. See CLAUDE.md "Region = county".
+--
+-- DATA PROVENANCE
+--   population, pct_elderly, pct_low_income — U.S. Census Bureau ACS 5-year
+--     estimates, keyed by ZCTA. Refresh with the ACS pull documented in
+--     docs/DATA-SOURCES.md.
+--   heat_index_f — provisional until the live NWS integration (SCRUM-23-25)
+--     replaces it.
+--   pct_no_ac — no free authoritative source exists at this geography. Seeded
+--     low across Texas because central AC is near-universal in TX housing; the
+--     real vulnerability drivers here are poverty and elderly population.
+--     This gap is documented rather than fabricated.
 --
 -- Run with:
 --   psql $DATABASE_URL -f src/db/seed_areas.sql
+-- Then compute scores (REQUIRED — the ranking is meaningless without it):
+--   npm run recompute-risk
 
 INSERT INTO areas (name, region, centroid, population, pct_elderly, pct_low_income, pct_no_ac, heat_index_f)
 VALUES

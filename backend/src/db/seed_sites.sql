@@ -1,5 +1,5 @@
--- Real relief-site seed data for the pilot area (Houston, Dallas, Fort
--- Worth, Austin, San Antonio) — matches the Texas pilot areas in
+-- Relief-site data for the Heat Relief Network service region (Houston,
+-- Dallas, Fort Worth, Austin, San Antonio) — matches the areas in
 -- seed_areas.sql.
 --
 -- Sites are real, publicly documented locations (public library branches
@@ -19,15 +19,20 @@
 -- Run with:
 --   psql $DATABASE_URL -f src/db/seed_sites.sql
 
--- ── Demo organization (paste this UUID into the admin portal's
---    "Organization ID" field to load these sites) ──
+-- ── Operating organization ──
+-- The organization that owns these site records. Its UUID is what an admin
+-- enters in the portal's "Organization ID" field.
+--
+-- ⚠️ contact_email is intentionally NULL: the previous value was a
+-- placeholder address that did not belong to a real mailbox. Set the real
+-- operating organization's name and contact details before going live.
 INSERT INTO orgs (id, name, type, contact_email, contact_phone)
 VALUES (
   'c1335a41-dc02-4d0f-8a29-f1398bd955df',
   'Texas Heat Relief Network',
   'government',
-  'heatrelief@texasheatrelief.org',
-  NULL
+  NULL,   -- TODO: real contact email before launch
+  NULL    -- TODO: real contact phone before launch
 );
 
 -- ── Sites ──
