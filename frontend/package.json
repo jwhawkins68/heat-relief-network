@@ -1,0 +1,11 @@
+{
+  "name": "heat-relief-network-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0"
+  },
+  "devDependencies": {
+    "vite": "7.1.7"
+  }
+}

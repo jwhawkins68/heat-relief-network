@@ -15,23 +15,22 @@ the earlier mock-data prototype.
 
 ## Running it
 
-1. Start the backend first (see the root README) — it needs to be
-   reachable at the URL in `js/config.js` (defaults to
-   `http://localhost:4000`) and already has CORS enabled.
-2. Serve this folder as static files — any static server works, e.g.:
+From the repository root, run:
 
-   ```bash
-   npx serve .
-   # or
-   python3 -m http.server 5173
-   ```
+```bash
+docker compose -f docker-compose.base44.yml up -d
+```
 
-3. Open `index.html` (resident view) or `admin.html` (org portal) in the
-   browser.
+Open `http://localhost:3000/` (resident view) or
+`http://localhost:3000/admin.html` (org portal). Compose starts PostGIS,
+initializes the schema and example priority areas on a fresh database,
+then starts the API and frontend with live reload. No sites are seeded.
 
-There's no bundler/npm install here on purpose, to keep the scaffold easy
-to run and inspect. If this grows past a few pages, moving to a small
-bundler (Vite, esbuild) is a reasonable next step.
+The frontend remains plain HTML/CSS/JS. Vite provides a development server
+and proxies `/api` to the backend at `api:4000`, so `js/config.js` uses the
+same origin instead of a browser-local backend URL. Production hosting
+must likewise route `/api` to the backend, or configure `API_BASE` for its
+API origin.
 
 ## What's wired up vs. still stubbed
 

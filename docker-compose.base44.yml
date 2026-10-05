@@ -1,0 +1,82 @@
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    restart: on-failure
+    environment:
+      POSTGRES_USER: heat_relief
+      POSTGRES_PASSWORD: base44_local_heat_relief
+      POSTGRES_DB: heat_relief
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U heat_relief -d heat_relief"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+
+  setup:
+    image: postgis/postgis:17-3.5
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app:ro
+    environment:
+      PGHOST: db
+      PGUSER: heat_relief
+      PGPASSWORD: base44_local_heat_relief
+      PGDATABASE: heat_relief
+    command:
+      - sh
+      - -ec
+      - |
+        if [ "$(psql -tAc "SELECT to_regclass('public.sites') IS NOT NULL")" != "t" ]; then
+          psql -v ON_ERROR_STOP=1 --single-transaction -f /app/backend/src/db/schema.sql -f /app/backend/src/db/seed_areas.sql
+        fi
+
+  api:
+    image: node:22-bookworm-slim
+    restart: on-failure
+    working_dir: /app/backend
+    volumes:
+      - .:/app
+      - backend_modules:/app/backend/node_modules
+    environment:
+      DATABASE_URL: postgres://heat_relief:base44_local_heat_relief@db:5432/heat_relief
+      PORT: 4000
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    command: ["sh", "-ec", "npm ci --no-audit --no-fund && npm run recompute-risk && exec npm run dev"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/api/sites', {signal: AbortSignal.timeout(3000)}).then(r => {if (!r.ok) process.exit(1)}).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  web:
+    image: node:22-bookworm-slim
+    restart: on-failure
+    working_dir: /app/frontend
+    volumes:
+      - .:/app
+      - frontend_modules:/app/frontend/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    command: ["sh", "-ec", "npm ci --no-audit --no-fund && exec npm run dev"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/', {signal: AbortSignal.timeout(3000)}).then(r => {if (!r.ok) process.exit(1)}).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  postgres_data:
+  backend_modules:
+  frontend_modules:
