@@ -5,6 +5,9 @@
 
 const state = { inviteCode: null, orgName: null };
 
+// Registration creates a login (email + password) and returns a session, so
+// the resident lands logged in. setResidentSession lives in api.js.
+
 // ─────────────────────────────────────────────
 // Field error helpers
 // ─────────────────────────────────────────────
@@ -30,17 +33,73 @@ function clearFieldErrors(fields) {
 const INTAKE_FIELDS = [
   'full_name', 'zip', 'age', 'household_size',
   'employment_status', 'insurance_status', 'annual_income', 'consent', 'invite_code',
+  'email', 'password', 'password_confirm',
 ];
 
 // ─────────────────────────────────────────────
 // Step 1 — invite gate
 // ─────────────────────────────────────────────
+// Each cooling center's registration code. The dropdown shows the center on the
+// left and its code on the right; picking one is all a resident has to do.
+// NOTE: these are single-use codes (one resident each), and because they are
+// listed here anyone who opens this page can see them.
+const INVITE_OPTIONS = [
+  { site: 'Sunnyside Community Center & Park',  city: 'Houston',     code: 'S5BZ8HC9' },
+  { site: 'Park Place Regional Library',        city: 'Houston',     code: 'LBRH67KK' },
+  { site: 'Young Neighborhood Library',         city: 'Houston',     code: 'C3786LMD' },
+  { site: 'Martin Luther King Jr. Branch Library', city: 'Dallas',   code: '8KTBKP9C' },
+  { site: 'Ella Mae Shamblee Library',          city: 'Fort Worth',  code: 'KE5CTMGD' },
+  { site: 'Southeast Branch Library',           city: 'Austin',      code: 'NPBB3C69' },
+  { site: 'Dottie Jordan Recreation Center',    city: 'Austin',      code: 'Q568RSC6' },
+  { site: 'BiblioTech West',                    city: 'San Antonio', code: 'DMHT5KYD' },
+];
+
+function optionLabel(o, suffix) {
+  return `${o.site} (${o.city})  —  ${o.code}${suffix || ''}`;
+}
+
+function fillInviteSelect() {
+  const select = document.getElementById('invite_code');
+  INVITE_OPTIONS.forEach((o) => {
+    const opt = document.createElement('option');
+    opt.value = o.code;
+    opt.textContent = optionLabel(o);
+    select.appendChild(opt);
+  });
+
+  // A link like register.html?code=S5BZ8HC9 preselects that center.
+  const wanted = (new URLSearchParams(window.location.search).get('code') || '').toUpperCase();
+  if (INVITE_OPTIONS.some((o) => o.code === wanted)) select.value = wanted;
+
+  // Grey out codes that were already used or have expired, so a resident
+  // doesn't pick a dead one. If the check itself fails, leave everything enabled.
+  INVITE_OPTIONS.forEach(async (o) => {
+    try {
+      await validateInvite(o.code);
+    } catch (err) {
+      if (err.status === 404 || err.status === 409) {
+        const opt = Array.from(select.options).find((x) => x.value === o.code);
+        if (opt) {
+          opt.disabled = true;
+          opt.textContent = optionLabel(o, err.status === 404 ? '  (code not found)' : '  (already used or expired)');
+          if (select.value === o.code) select.value = '';
+        }
+      }
+    }
+  });
+}
+fillInviteSelect();
+
 document.getElementById('invite-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   clearFieldErrors(['invite_code']);
 
   const btn = document.getElementById('invite-submit');
   const code = document.getElementById('invite_code').value.trim().toUpperCase();
+  if (!code) {
+    showFieldError('invite_code', 'Please choose your cooling center.');
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = 'Checking…';
@@ -86,6 +145,14 @@ document.getElementById('intake-form').addEventListener('submit', async (e) => {
   const msg = document.getElementById('intake-msg');
   msg.textContent = '';
 
+  const password = document.getElementById('password').value;
+  if (password !== document.getElementById('password_confirm').value) {
+    showFieldError('password_confirm', "Passwords don't match");
+    msg.textContent = 'Please correct the highlighted fields.';
+    msg.className = 'save-msg error-state';
+    return;
+  }
+
   const payload = {
     invite_code: state.inviteCode,
     full_name: document.getElementById('full_name').value.trim(),
@@ -99,6 +166,8 @@ document.getElementById('intake-form').addEventListener('submit', async (e) => {
     insurance_status: document.getElementById('insurance_status').value,
     annual_income: Number(document.getElementById('annual_income').value),
     consent: consentBox.checked,
+    email: document.getElementById('email').value.trim(),
+    password,
   };
 
   intakeSubmit.disabled = true;
@@ -108,7 +177,13 @@ document.getElementById('intake-form').addEventListener('submit', async (e) => {
     const result = await registerResident(payload);
     renderResults(result);
   } catch (err) {
-    if (err.fieldErrors) {
+    if (err.code === 'email_taken') {
+      // Your invite code was NOT used up — the server checks this first.
+      showFieldError('email', err.message);
+      msg.innerHTML = 'That email already has a HeatSafe profile. <a href="login.html">Log in</a> instead.';
+      msg.className = 'save-msg error-state';
+      document.getElementById('email').focus();
+    } else if (err.fieldErrors) {
       Object.entries(err.fieldErrors).forEach(([field, message]) => showFieldError(field, message));
       msg.textContent = 'Please correct the highlighted fields.';
       msg.className = 'save-msg error-state';
@@ -134,6 +209,22 @@ function renderResults(result) {
   document.getElementById('results-panel').hidden = false;
 
   const { resident, priority, recommendations, fallback_sites, note } = result;
+
+  if (result.session) {
+    setResidentSession({
+      ...result.session,
+      resident_id: resident.id,
+      registration_id: resident.registration_id,
+    });
+  }
+
+  if (resident.registration_id) {
+    document.getElementById('registration-id').textContent = resident.registration_id;
+    document.getElementById('registration-id-note').textContent =
+      `We've emailed it to ${resident.email}, along with the cooling centers nearest you. ` +
+      'Give this ID to a caseworker or cooling-center staff so they can find your record.';
+    document.getElementById('registration-id-box').hidden = false;
+  }
 
   document.getElementById('results-intro').textContent =
     `Thanks, ${resident.full_name.split(' ')[0]}. Here's where you stand and where to go.`;

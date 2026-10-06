@@ -339,3 +339,256 @@ All decks credit **"Team 5"**, never an individual.
 - Agents are documented in `docs/AGENTS.md`. If you change a threshold, change it
   there too — the numbers appear in the doc, the code comments, and the Jira
   acceptance criteria, and they are supposed to agree.
+
+## 10. Points-per-actor tally (use-case diagram)
+
+The team's use-case diagram names seven actors: Resident, Caregiver, Volunteer,
+Coordinator, Cooling Center Staff, System Administrator, and AI Agent. This
+table assigns every pointed backlog item (Jira `customfield_10016`, the real
+Story Points field — see the note below) to whichever actor **performs** that
+use case, not necessarily whichever actor the story's "As a ___" line names.
+
+**Bucketing rule:** a story's "As a X, I want..." framing names the
+*beneficiary*. The diagram's bubbles name the *actor who does the work*. Where
+they diverge, the diagram wins for this tally. Concretely:
+
+- The scoring/matching/planning algorithms themselves — `riskScore.js`'s
+  vulnerability scoring, `needScore.js`, `serviceMatch.js`, `heatWatchAgent.js`,
+  `dispatchAgent.js`, `siteFreshnessAgent.js`, and the planned ride-matching
+  agent — are **AI Agent** work, even when the story is written "As a
+  resident..." (SCRUM-33) or "As an outreach coordinator..." (the agent still
+  does the computing; the human receives the output).
+- Database schema, seed data, and third-party API integration (Census
+  geocoding, ACS, NWS/Open-Meteo, caching layers) that *support* an agent but
+  isn't the decision logic itself is **System Administrator** work.
+- A human actor viewing, configuring, or acting on an agent's output — the
+  admin portal's priority-areas table, a coordinator's contact/gap list, a
+  resident's match results — is bucketed to *that human actor*, not to AI
+  Agent, since the diagram treats "view/use the output" and "compute the
+  output" as separate bubbles.
+
+| Actor | Built (In Review/Done/In Progress) | Planned (To Do, new backlog) | Total |
+|---|---|---|---|
+| System Administrator | 70 | 0 | **70** |
+| AI Agent | 42 | 8 | **50** |
+| Resident | 26 | 9 | **35** |
+| Volunteer | 0 | 13 | **13** |
+| Cooling Center Staff | 0 | 12 | **12** |
+| Coordinator | 6 | 5 | **11** |
+| Caregiver | 0 | 8 | **8** |
+| **Total** | **144** | **55** | **199** |
+
+Verified by summing `customfield_10016` across every non-Epic, non-Subtask
+issue in the SCRUM project via JQL on 2026-09-17 — the 199 above is an exact
+match to that independent sum, not a hand-added total.
+
+**Per-issue assignment** (built items are SCRUM-12 through SCRUM-54; planned
+items are the new SCRUM-67 through SCRUM-83 epics/stories created the same day
+for the diagram roles that had no backlog coverage — Caregiver, Volunteer,
+Cooling Center Staff, resident ride-matching, and coordinator reporting):
+
+- **System Administrator (70):** SCRUM-12(3), 15(5), 17(2), 18(3), 19(5),
+  20(1), 21(1), 22(2), 23(5), 24(2), 25(1), 26(3), 30(5), 31(5), 36(5), 37(3),
+  43(5), 46(5), 47(3), 51(3), 52(3)
+- **AI Agent (50):** SCRUM-13(3), 14(5), 32(8), 33(5), 40(5), 41(3), 44(8),
+  50(5) — built (42) — plus SCRUM-82(8) planned
+- **Resident (35):** SCRUM-16(3), 27(5), 28(3), 34(5), 35(3), 49(2), 54(5) —
+  built (26) — plus SCRUM-79(3), 80(3), 81(3) planned
+- **Coordinator (11):** SCRUM-42(3), 45(3) — built (6) — plus SCRUM-83(5)
+  planned
+- **Volunteer (13, all planned):** SCRUM-72(3), 73(5), 74(3), 75(2)
+- **Cooling Center Staff (12, all planned):** SCRUM-76(5), 77(5), 78(2)
+- **Caregiver (8, all planned):** SCRUM-70(5), 71(3)
+
+**Note on the Story Points field:** through 2026-09-16, SCRUM-27 through
+SCRUM-54 had their point values typed only as prose in the issue description
+("**Story points:** N"), never set in the real `customfield_10016` field —
+invisible to the board, backlog, and velocity views despite `PROJECT_STATUS.md`
+having quoted totals from that prose all along. All 23 affected issues were
+corrected to set the real field on 2026-09-17; the numbers in this document
+and in Jira now agree.
+
+## 11. Consolidated "HeatSafe Checkpoint" deck (2026-09-17)
+
+All prior presentation material (Sprint 0 deck, Sprint 1 progress-update deck,
+and this session's backlog/diagram/points-tally work) has been folded into a
+single 16-slide deck, `HeatSafe Checkpoint.pptx`:
+
+1. Title / agenda
+2. Sprint 0 recap (pulled from `Team5_Sprint0_Presentation.pptx` verbatim)
+3. Product Owner-voice backlog remodel — before/after framing, System
+   Administrator vs. generic "Team" phrasing
+4. Updated use-case diagram (25 use cases across 7 actors, built vs. planned)
+5. Diagram-vs-tally methodology note (the two artifacts intentionally use
+   different actor-bucketing conventions — see section 10 above and the
+   deck itself for why)
+6. Backlog by epic (built/in-review, then planned)
+7. Points-per-actor tally (the section-10 table)
+8. New Jira epics/stories added this session for previously undiagrammed
+   actors (Caregiver, Volunteer, Cooling Center Staff, ride-matching, Checkr)
+9. Sprint 1 team assignments (JH/RT/TW/DL, reused from the Sprint 0 deck)
+10. Scrum team / Kanban board alignment
+11. Outstanding items (stale git lock on this machine; old deck copies to
+    archive) and thank-you/questions close
+
+Saved to `Claude outputs/HeatSafe_Checkpoint.pptx` on this machine and
+delivered to James in chat. Not auto-published as a Google Slides file this
+session — the finished pptx is ~120KB, too large to pass through a chat tool
+call as inline base64, so turning it into a live Slides doc is a one-click
+manual step on Drive (upload → Google auto-converts) rather than something
+this session could do end-to-end.
+
+## 12. Resident self-service: profile, auto-tied alerts, wellness check-in (2026-09-29)
+
+Verified all 7 checkpoint acceptance items against the actual running code
+(not just Jira/diagram status) and found: registration (1) fully built;
+alerts (3) and the recompute job (7) partially built; profile editing (2),
+request-assistance (4), wellness check-in (5), and admin user management (6)
+not started. Full findings are in the chat with the Project Manager persona;
+implemented plan items A-D of that verification (self-lookup, profile edit,
+alert auto-tie, and check-in), leaving E (request assistance), F (live
+weather/demographic pull), G (real admin accounts), and H (SMS/email/push)
+for a later session.
+
+**What shipped:**
+- `backend/src/db/migration_resident_self_service.sql` — adds
+  `residents.region` (derived county) and a new `check_ins` table. **Not yet
+  run against the dev database** — run it, then restart the backend.
+- `backend/src/services/countyLookup.js` — city/state -> county for the 5
+  pilot metros only, covered by `backend/test/countyLookup.test.js` (passing).
+- `GET/PATCH /api/residents/:id`, `POST /api/residents/:id/check-in`,
+  `GET /api/residents/:id/check-ins` — all resident-self-service, no admin
+  token required. **Security stopgap, documented in the route file:** the
+  resident's own UUID is a bearer capability, same posture as `ADMIN_TOKEN` —
+  there is no resident login system yet.
+- `frontend/me.html` / `frontend/js/me.js` — new "My HeatSafe info" page:
+  view/edit profile, see priority reasons, respond to a wellness check-in,
+  see check-in history, and see alerts for the resident's own county.
+- `frontend/js/app.js` — homepage alert banner now auto-fills from a
+  registered resident's county (never overrides manual entry).
+- `frontend/js/admin.js` — resident queue now shows each resident's latest
+  check-in status/time (new column, backed by a `LEFT JOIN LATERAL` in the
+  admin `GET /api/residents` query).
+- Jira: SCRUM-81 ("respond to a wellness check-in") moved to In Review with a
+  comment on what's covered vs. not (no alert-linkage or caregiver
+  visibility yet — see the ticket). New task SCRUM-166 filed and moved to In
+  Review for the profile self-service + alert auto-tie work, since nothing
+  in the backlog covered it before this.
+
+**Before this is usable, from a machine that can reach the real database:**
+1. `psql $DATABASE_URL -f backend/src/db/migration_resident_self_service.sql`
+2. Restart the backend (`Restart HeatSafe` on the Desktop, or `npm start`
+   in `backend/`) — this session's sandbox can edit files in this folder but
+   cannot reach the locally-running Postgres/Node processes to run or test
+   this itself.
+3. Register a test resident, then open `frontend/me.html` in the same
+   browser to confirm the info loads, edits save, and a check-in records.
+4. Confirm the admin portal's resident queue shows the check-in column.
+
+**Not done, flagged rather than silently skipped:**
+- SCRUM-81's full acceptance criteria (alert-triggered prompt, no-response
+  tracking, caregiver visibility) — see the Jira comment.
+- No automated test covers the new routes themselves (no DB-backed test
+  harness exists in this repo yet — the new work is exercised the same way
+  `residents.js`'s existing routes are, by hand against a running server).
+
+## 13. Resident accounts: email login, Registration IDs, alert emails (2026-09-30)
+
+**What a resident can do now**
+- Register with an **email + password** (required). One profile per email,
+  case-insensitive — a duplicate is rejected *before* the invite code is used.
+- **Log in / log out** from any device (`login.html`) instead of re-registering.
+  "Forgot password" emails a one-hour, single-use reset link.
+- Every profile has a **Registration ID** like `HS-7KQ2-M9XD` (no 0/O/1/I, so it
+  can be read over the phone). Existing residents were backfilled by the
+  migration. Shown on the confirmation screen, My info, the admin queue, and
+  in every email.
+- **Emails**: a welcome email (Registration ID, active heat alerts for their
+  county, 3 nearest cooling centers), and a heat-alert email whenever the
+  heat-watch agent creates an alert for their county. Each alert goes to each
+  resident at most once. Residents can turn alert emails off on My info.
+- Residents registered **before** logins existed: opening My info on the
+  device they registered with shows a one-time "Add a login" form. Once a
+  profile has a password, its UUID alone no longer opens it.
+
+**Files**
+- DB: `backend/src/db/migration_resident_accounts.sql` (new)
+- Backend (new): `routes/auth.js`, `middleware/residentAuth.js`,
+  `services/passwords.js` (scrypt), `services/sessions.js`,
+  `services/accounts.js`, `services/mailer.js`, `services/residentNotifier.js`,
+  `scripts/runNotifyResidents.js`, `test/accounts.test.js`,
+  `test/residentEmails.test.js`
+- Backend (changed): `routes/residents.js`, `services/heatWatchAgent.js`,
+  `server.js`, `package.json` (+ nodemailer 7, `npm run notify-residents`),
+  `.env.example`
+- Frontend (new): `login.html`, `js/login.js`
+- Frontend (changed): `register.html`, `js/register.js`, `me.html`, `js/me.js`
+  (rewritten around logins), `js/api.js`, `js/admin.js` (Registration ID +
+  email columns), `index.html` (Log in link), `css/styles.css`
+
+**Email delivery**: with `SMTP_HOST` unset (the default), mail goes to a free
+Ethereal *test* inbox — nothing reaches real addresses. The backend console
+prints a preview link for every email, plus a login for the whole test inbox.
+For real delivery, set the `SMTP_*` values in `backend/.env` (see
+`.env.example`; Gmail needs an *app password*). For phone/LAN testing, set
+`FRONTEND_BASE_URL=http://<this Mac's LAN IP>:3000` so links in emails work
+from the phone.
+
+**To turn it on (from this Mac):**
+```
+cd ~/heat-relief-network
+set -a && source backend/.env && set +a
+psql "$DATABASE_URL" -f backend/src/db/migration_resident_accounts.sql
+```
+Then restart HeatSafe. nodemailer is already installed in `backend/node_modules`.
+Check: register with one of the invite codes → note the Registration ID →
+Log out → Log in → confirm the same profile. The backend console shows the
+welcome email's preview link.
+
+**Verified before hand-off (sandbox, not this Mac's database):** 56/56 unit
+tests; real backend against a disposable Postgres 16 loaded with this repo's
+schema + all migrations + seeds (PostGIS functions stubbed) — 36/36 API checks,
+10/10 password-reset checks, migration re-run safely; 12/12 Chromium
+click-through checks, no JS errors. Screenshots:
+`Claude outputs/HeatSafe-Accounts-Screenshots/`.
+
+**Known limits (documented, not hidden):**
+- Login lockout (5 wrong passwords / 15 min) is in memory — resets when the
+  server restarts. Fine for one pilot server.
+- Sessions are bearer tokens in localStorage (30 days). Pages escape all
+  user-provided text, but a production deployment should add a Content
+  Security Policy and HTTPS.
+- Email only — no SMS/push yet (the unused `users` table and Twilio `.env`
+  keys are still there for that).
+- Emails go to residents whose `region` (county) matches the alert; residents
+  outside the five pilot metros have no county on file and get only the
+  welcome email.
+
+**Jira:** SCRUM-235 (new, In Review). SCRUM-126, SCRUM-127, and SCRUM-129 moved
+to In Review with evidence comments. SCRUM-113 commented, left In Review.
+
+## 14. Flyer / QR registration-code workflow (2026-09-30)
+
+**Model chosen:** generic QR + a single-use code per person (LAN demo).
+Every QR opens `http://<Mac LAN IP>:3000/register.html`; the person types the
+8-character code printed on their card. No app code changed.
+
+**Steps**
+1. `./scripts/generate_flyer_codes.sh` - issues 25 single-use codes for each of
+   the 8 cooling centers (200 total, 30-day expiry) and writes
+   `Claude outputs/flyer-codes/flyer_codes_<timestamp>.csv`. Reads
+   `ADMIN_TOKEN` from `backend/.env`; never prints it. Options:
+   `PER_SITE=10 EXPIRES_IN_DAYS=14 REGISTER_BASE_URL=http://<ip>:3000`.
+   The register URL defaults to the Mac's current Wi-Fi address.
+2. `python3 scripts/build_code_cards.py <csv> <out_dir>` (needs reportlab +
+   Pillow) - builds `HeatSafe_Registration_Cards.pdf` (10 cards per US Letter
+   page, grouped by cooling center, cut guides) and the QR as PNG/SVG.
+3. Flyer: `Claude outputs/flyer-codes/HeatSafe_Registration_Flyer.pdf`
+   (designed in Canva; QR verified to decode to the register URL).
+
+**Known limits**
+- Phones must be on the same Wi-Fi as the Mac; the LAN address can change
+  after a restart. If it changes, re-run step 1/2 with the new
+  `REGISTER_BASE_URL` and reprint. Real public flyers need a stable HTTPS URL.
+- Codes are single-use; a code can't be reused after someone registers.
+- The QR does not pre-fill the code (option B, not built).

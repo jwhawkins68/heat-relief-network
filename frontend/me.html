@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HeatSafe — My Info</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="app-header">
+  <h1>🌡️ HeatSafe</h1>
+  <nav>
+    <a href="index.html">← Find a site</a>
+    <a href="register.html">Register for priority access</a>
+    <a href="login.html" id="nav-login">Log in</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ── Not logged in ─────────────────────────────────────────────── -->
+  <div class="admin-panel auth-panel" id="signin-panel" hidden>
+    <h2 style="margin-top:0;">My HeatSafe info</h2>
+    <p class="hint" id="signin-reason">Log in to see and update your HeatSafe info.</p>
+    <p><a class="button-link" href="login.html">Log in</a></p>
+    <p class="hint">Not registered yet? <a href="register.html">Register for priority access</a>.</p>
+    <details class="legacy-lookup">
+      <summary>Registered before HeatSafe had logins?</summary>
+      <p class="hint">
+        Open this page on the device you registered with and it will find you
+        automatically. On a different device, paste the long ID from your
+        original confirmation screen:
+      </p>
+      <div class="lookup-box">
+        <div class="field">
+          <label for="lookup-id">Your original HeatSafe ID</label>
+          <input type="text" id="lookup-id" placeholder="e.g. 3f1a2b4c-...">
+        </div>
+        <button type="button" id="lookup-btn">Find my info</button>
+      </div>
+      <span class="save-msg error-state" id="lookup-msg" hidden></span>
+    </details>
+  </div>
+
+  <!-- ── Logged in: account summary ─────────────────────────────────── -->
+  <div class="admin-panel" id="account-panel" hidden>
+    <div class="account-row">
+      <div>
+        <span class="registration-id-label">Registration ID</span>
+        <strong class="registration-id" id="account-registration-id"></strong>
+      </div>
+      <div>
+        <span class="registration-id-label">Logged in as</span>
+        <span id="account-email"></span>
+      </div>
+      <button type="button" id="logout-btn" class="secondary">Log out</button>
+    </div>
+    <label class="inline-check">
+      <input type="checkbox" id="notify-email">
+      Email me when a heat alert is issued for my county, with the cooling centers nearest me
+    </label>
+    <span class="save-msg" id="notify-msg"></span>
+  </div>
+
+  <!-- ── Older profile with no login yet: add one (once) ────────────── -->
+  <div class="admin-panel auth-panel" id="claim-panel" hidden>
+    <h2 style="margin-top:0;">Add a login to your profile</h2>
+    <p class="hint">
+      Your profile was created before HeatSafe had logins. Add an email and password
+      once so you can get back in from any device, and so we can email you heat
+      alerts and your nearest cooling centers.
+      Your Registration ID is <strong id="claim-registration-id"></strong>.
+    </p>
+    <form id="claim-form">
+      <div class="field">
+        <label for="claim-email">Email</label>
+        <input type="email" id="claim-email" autocomplete="email" required>
+        <span class="field-error" id="claim-email-error" hidden></span>
+      </div>
+      <div class="field">
+        <label for="claim-password">Password</label>
+        <input type="password" id="claim-password" autocomplete="new-password" minlength="8" maxlength="128" required>
+        <span class="why-we-ask">At least 8 characters.</span>
+        <span class="field-error" id="claim-password-error" hidden></span>
+      </div>
+      <div class="field">
+        <label for="claim-password-confirm">Confirm password</label>
+        <input type="password" id="claim-password-confirm" autocomplete="new-password" maxlength="128" required>
+      </div>
+      <button type="submit" id="claim-submit">Add my login</button>
+      <span class="save-msg" id="claim-msg"></span>
+    </form>
+  </div>
+
+  <!-- ── Alerts for the resident's own county ───────────────────────── -->
+  <div id="alert-banner" hidden></div>
+
+  <!-- ── Wellness check-in ───────────────────────────────────────────── -->
+  <div class="admin-panel" id="checkin-panel" hidden style="margin-top: 1.5rem;">
+    <h2 style="margin-top:0;">Wellness check-in</h2>
+    <p class="hint">
+      If a coordinator has asked how you're doing during a heat event, let them
+      know here. This updates the priority queue they use to decide who to
+      reach out to first.
+    </p>
+    <div class="checkin-actions">
+      <button type="button" id="checkin-ok-btn">✅ I'm safe</button>
+      <button type="button" id="checkin-help-btn" class="danger">🆘 I need help</button>
+    </div>
+    <span class="save-msg" id="checkin-msg"></span>
+    <ul class="checkin-history" id="checkin-history"></ul>
+  </div>
+
+  <!-- ── Profile view / edit ─────────────────────────────────────────── -->
+  <div class="admin-panel" id="profile-panel" hidden style="margin-top: 1.5rem;">
+    <h2 style="margin-top:0;">Your info</h2>
+    <div style="margin: 0.5rem 0 1rem;">
+      <span class="tier-badge" id="tier-badge"></span>
+      <span class="hint" id="region-line"></span>
+    </div>
+
+    <form id="profile-form">
+      <div class="filters">
+        <div class="field" style="flex: 1; min-width: 220px;">
+          <label for="full_name">Full name</label>
+          <input type="text" id="full_name" name="full_name" autocomplete="name" required>
+          <span class="field-error" id="full_name-error" hidden></span>
+        </div>
+        <div class="field" style="flex: 1; min-width: 220px;">
+          <label for="street_address">Street address <span style="font-weight:400;">(optional)</span></label>
+          <input type="text" id="street_address" name="street_address" autocomplete="street-address">
+        </div>
+      </div>
+
+      <div class="filters">
+        <div class="field">
+          <label for="city">City</label>
+          <input type="text" id="city" name="city" autocomplete="address-level2">
+        </div>
+        <div class="field">
+          <label for="zip">ZIP code</label>
+          <input type="text" id="zip" name="zip" inputmode="numeric" pattern="[0-9]{5}"
+                 maxlength="5" autocomplete="postal-code" required>
+          <span class="field-error" id="zip-error" hidden></span>
+        </div>
+        <div class="field">
+          <label for="age">Your age</label>
+          <input type="number" id="age" name="age" min="0" max="120" required>
+          <span class="field-error" id="age-error" hidden></span>
+        </div>
+        <div class="field">
+          <label for="household_size">People in household</label>
+          <input type="number" id="household_size" name="household_size" min="1" max="20" required>
+          <span class="field-error" id="household_size-error" hidden></span>
+        </div>
+      </div>
+
+      <div class="filters">
+        <div class="field" style="flex: 1; min-width: 240px;">
+          <label for="employment_status">Employment status</label>
+          <select id="employment_status" name="employment_status" required>
+            <option value="">Choose one…</option>
+            <option value="outdoor_worker">Work outdoors (construction, landscaping, delivery, farm)</option>
+            <option value="full_time_indoor">Work full-time, mostly indoors</option>
+            <option value="part_time">Work part-time</option>
+            <option value="unemployed">Not currently working</option>
+            <option value="unable_to_work">Unable to work</option>
+            <option value="retired">Retired</option>
+            <option value="student">Student</option>
+          </select>
+          <span class="field-error" id="employment_status-error" hidden></span>
+        </div>
+
+        <div class="field" style="flex: 1; min-width: 240px;">
+          <label for="insurance_status">Health insurance</label>
+          <select id="insurance_status" name="insurance_status" required>
+            <option value="">Choose one…</option>
+            <option value="personal">Personal or employer insurance</option>
+            <option value="government_assistance">Government assistance (Medicaid, Medicare, CHIP)</option>
+            <option value="none">No insurance</option>
+          </select>
+          <span class="field-error" id="insurance_status-error" hidden></span>
+        </div>
+
+        <div class="field" style="flex: 1; min-width: 200px;">
+          <label for="annual_income">Annual household income (USD)</label>
+          <input type="number" id="annual_income" name="annual_income" min="0" step="100"
+                 placeholder="Leave blank to keep unchanged">
+          <span class="why-we-ask">
+            We don't show your income back to you once submitted — leave this
+            blank to keep what's already on file, or enter a new amount if it's changed.
+            Current band: <strong id="income-band-line">—</strong>.
+          </span>
+          <span class="field-error" id="annual_income-error" hidden></span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label style="flex-direction: row; align-items: center; gap: 0.45rem; display: flex; font-size: 0.9rem;">
+          <input type="checkbox" id="children_under_5" name="children_under_5" style="width: auto;">
+          A child under 5 lives in my household
+        </label>
+      </div>
+
+      <div class="consent-box">
+        <label>
+          <input type="checkbox" id="consent" name="consent">
+          <span>
+            I confirm these updated answers can be shared with HeatSafe and its
+            partner organizations, same as when I registered.
+          </span>
+        </label>
+        <span class="field-error" id="consent-error" hidden></span>
+      </div>
+
+      <button type="submit" id="profile-submit" disabled>Save changes</button>
+      <span class="save-msg" id="profile-msg"></span>
+    </form>
+
+    <h3 style="margin-top:1.5rem;">Why you were prioritized</h3>
+    <ul class="reason-list" id="reason-list"></ul>
+  </div>
+
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/me.js"></script>
+</body>
+</html>

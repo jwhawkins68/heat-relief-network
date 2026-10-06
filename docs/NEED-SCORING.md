@@ -3,6 +3,8 @@
 **Epic:** SCRUM-29 — Priority Access and Resident Matching
 **Implementation:** `backend/src/services/needScore.js`, `backend/src/services/serviceMatch.js`
 **Related:** area-level scoring is documented separately (`backend/src/services/riskScore.js`, SCRUM-17).
+**See also: [`docs/AGENTS.md`](AGENTS.md)** — the three autonomous agents, which
+*consume* the score defined here.
 
 This system has two scoring engines and they answer different questions:
 
@@ -10,6 +12,22 @@ This system has two scoring engines and they answer different questions:
 |---|---|---|---|
 | Area risk score | Which *neighborhoods* need outreach? | A ZIP-level area | `riskScore.js` |
 | Resident need score | Which *people* need help first, and what kind? | A registered household | `needScore.js` |
+
+> ### Where this score actually gets used
+>
+> This document defines the score. **[`docs/AGENTS.md`](AGENTS.md)** documents the
+> three agents that act on it — Heat Emergency Watch, Outreach Dispatch Planner, and
+> Site Status Freshness — and they raise the stakes on everything below, because they
+> run on a schedule rather than when a caseworker chooses to look.
+>
+> Two things there are worth reading alongside this file:
+>
+> - **§7, the contact boundary.** No agent contacts a resident directly. Every one
+>   produces a ranked list for a human to act on. The explainability requirement in
+>   §1 below is what makes that human review meaningful rather than ceremonial.
+> - **§8, what the agents cannot see.** The first limitation listed is that the data
+>   scored here is self-reported and never re-verified. A need score is a *claim*,
+>   not a fact, and the agents currently treat it as a fact.
 
 ---
 

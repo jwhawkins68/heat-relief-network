@@ -12,6 +12,8 @@
   <h1>🌡️ HeatSafe</h1>
   <nav>
     <a href="index.html">← Find a site</a>
+    <a href="me.html">My info</a>
+    <a href="login.html">Log in</a>
   </nav>
 </header>
 
@@ -22,15 +24,15 @@
     <h2 style="margin-top:0;">Register for priority access</h2>
     <p class="hint">
       Priority access is offered through partner organizations — clinics, libraries,
-      community centers, and outreach teams. If one of them gave you an invite code,
-      enter it below to get started.
+      community centers, and outreach teams. Choose the cooling center that gave you
+      your registration code, then continue.
     </p>
     <form id="invite-form" class="filters">
-      <div class="field" style="flex: 1; min-width: 220px;">
-        <label for="invite_code">Invite code</label>
-        <input type="text" id="invite_code" name="invite_code" placeholder="8-character code from your organization"
-               maxlength="8" autocomplete="off" spellcheck="false"
-               style="text-transform: uppercase; letter-spacing: 0.12em;" required>
+      <div class="field" style="flex: 1; min-width: 260px;">
+        <label for="invite_code">Cooling center and registration code</label>
+        <select id="invite_code" name="invite_code" required>
+          <option value="">Choose your cooling center…</option>
+        </select>
         <span class="field-error" id="invite_code-error" hidden></span>
       </div>
       <button type="submit" id="invite-submit">Continue</button>
@@ -38,6 +40,7 @@
     <p class="hint" style="margin-bottom:0;">
       Don't have a code? You can still <a href="index.html">search for cooling centers
       and water stations</a> without registering — no code needed.
+      Already registered? <a href="login.html">Log in</a> instead — there's no need to register again.
     </p>
   </div>
 
@@ -136,6 +139,30 @@
         <span class="why-we-ask">Young children overheat faster than adults, and it changes which sites we suggest.</span>
       </div>
 
+      <h3 style="margin-bottom:0.25rem;">Create your login</h3>
+      <p class="hint" style="margin-top:0;">
+        You'll use these to get back to your HeatSafe info from any device, without registering again.
+      </p>
+      <div class="filters">
+        <div class="field" style="flex: 1; min-width: 220px;">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" autocomplete="email" required>
+          <span class="why-we-ask">One HeatSafe profile per email. We send heat alerts for your county and your nearest cooling centers here.</span>
+          <span class="field-error" id="email-error" hidden></span>
+        </div>
+        <div class="field" style="flex: 1; min-width: 200px;">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+          <span class="why-we-ask">At least 8 characters.</span>
+          <span class="field-error" id="password-error" hidden></span>
+        </div>
+        <div class="field" style="flex: 1; min-width: 200px;">
+          <label for="password_confirm">Confirm password</label>
+          <input type="password" id="password_confirm" name="password_confirm" autocomplete="new-password" maxlength="128" required>
+          <span class="field-error" id="password_confirm-error" hidden></span>
+        </div>
+      </div>
+
       <div class="consent-box">
         <label>
           <input type="checkbox" id="consent" name="consent">
@@ -160,6 +187,12 @@
     <h2 style="margin-top:0;">You're registered</h2>
     <p id="results-intro"></p>
 
+    <div class="registration-id-box" id="registration-id-box" hidden>
+      <span class="registration-id-label">Your Registration ID</span>
+      <strong class="registration-id" id="registration-id"></strong>
+      <span class="hint" id="registration-id-note"></span>
+    </div>
+
     <div style="margin: 1rem 0;">
       <span class="tier-badge" id="tier-badge"></span>
     </div>
@@ -176,7 +209,10 @@
       <strong>What happens next:</strong> a partner organization may contact you before
       or during the next heat emergency. Site hours and open/closed status change
       through the day — check the <a href="index.html">map</a> before heading out.
-      To update or remove your details, contact the organization that invited you.
+      You can review or update what you told us any time at
+      <a href="me.html">My HeatSafe info</a>. You're logged in on this device, and you can
+      <a href="login.html">log in</a> with your email and password on any other device.
+      To remove your record entirely, contact the organization that invited you.
     </p>
     <p class="hint">
       Curious how this was decided? The full scoring rubric is public:

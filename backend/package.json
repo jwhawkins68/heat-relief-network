@@ -1,7 +1,7 @@
 {
   "name": "heat-relief-network-backend",
   "version": "0.1.0",
-  "description": "API for the Heat Relief Network — sites, inventory, alerts, matching",
+  "description": "API for the Heat Relief Network \u2014 sites, inventory, alerts, matching",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
@@ -10,12 +10,14 @@
     "recompute-risk": "node src/scripts/recomputeAllRiskScores.js",
     "test": "node --test test/*.test.js",
     "heat-watch": "node src/scripts/runHeatWatch.js",
-    "site-freshness": "node src/scripts/runSiteFreshness.js"
+    "site-freshness": "node src/scripts/runSiteFreshness.js",
+    "notify-residents": "node src/scripts/runNotifyResidents.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "pg": "^8.12.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "nodemailer": "^7.0.13",
+    "pg": "^8.12.0"
   }
 }

@@ -8,6 +8,15 @@ const state = {
   selectedSiteId: null,
 };
 
+// See the same key in register.js / me.js — a resident's own id, used here
+// only to auto-fill the county field so returning residents don't have to
+// retype it just to see their own alerts. Best-effort: if it's missing or
+// stale, the manual county field still works exactly as before.
+const RESIDENT_ID_KEY = 'heatsafe_resident_id';
+function getResidentId() {
+  try { return localStorage.getItem(RESIDENT_ID_KEY) || ''; } catch { return ''; }
+}
+
 const DEFAULT_CENTER = [39.8, -98.6]; // roughly the center of the contiguous US
 const DEFAULT_ZOOM = 4;
 
@@ -364,11 +373,38 @@ function applyDeepLink() {
   return Boolean((lat && lon) || zip);
 }
 
+/**
+ * If this browser registered a resident, load their alerts automatically
+ * using the county derived from their registered address (see
+ * countyLookup.js), instead of making them type it into the search form.
+ * Never overrides a county the visitor has already typed by hand.
+ */
+async function loadOwnAlerts() {
+  const residentId = getResidentId();
+  if (!residentId) return;
+
+  const regionField = document.getElementById('region');
+  if (regionField.value.trim()) return; // don't clobber a manual entry
+
+  try {
+    const resident = await fetchResidentSelf(residentId);
+    if (resident.region) {
+      regionField.value = resident.region;
+      loadAlerts(resident.region);
+    }
+  } catch (err) {
+    // Best-effort — e.g. the record was removed, or this is a stale id from
+    // an old visit. The manual county field still works either way.
+    console.warn('Could not auto-load alerts for this browser\'s resident:', err.message);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
   populateCountyList();
   applyDeepLink();
   loadSites();
+  loadOwnAlerts();
 
   document.getElementById('filters-form').addEventListener('submit', (e) => {
     e.preventDefault();

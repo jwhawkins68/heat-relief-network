@@ -336,3 +336,93 @@ table.admin-table tr:last-child td { border-bottom: none; }
   border-radius: 8px;
   display: inline-block;
 }
+
+/* ── Resident self-service (Checkpoint plan items A-D) ───────────────── */
+.badge.status-ok { background: var(--status-open); }
+.badge.status-need_help { background: var(--status-closed); }
+
+.checkin-actions { display: flex; gap: 0.6rem; margin: 0.75rem 0; flex-wrap: wrap; }
+button.danger { background: var(--status-closed); }
+button.danger:hover { background: #8c1f18; }
+
+.checkin-history { margin: 0.5rem 0 0; padding-left: 1.15rem; font-size: 0.85rem; color: var(--color-text-muted); }
+.checkin-history li { margin-bottom: 0.25rem; }
+
+.lookup-box { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
+.lookup-box .field { flex: 1; min-width: 260px; }
+
+.page-footer {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+.page-footer .hint { margin: 0; }
+
+
+/* ── Resident accounts: login pages, Registration ID ───────────────── */
+.auth-panel { max-width: 560px; }
+.auth-panel form .field { margin-bottom: 0.85rem; }
+.auth-panel form input { width: 100%; box-sizing: border-box; }
+
+.registration-id-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 1rem 0;
+  padding: 0.9rem 1rem;
+  border: 2px dashed var(--color-primary);
+  border-radius: 8px;
+  background: #fbeee7;
+}
+.registration-id-label {
+  display: block;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+.registration-id {
+  font-size: 1.35rem;
+  letter-spacing: 0.12em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.registration-id-cell {
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.account-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 2rem;
+  margin-bottom: 0.75rem;
+}
+.account-row > button { margin-left: auto; }
+.account-row .registration-id { font-size: 1.1rem; }
+
+.inline-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.inline-check input { width: auto; }
+
+a.button-link {
+  display: inline-block;
+  padding: 0.55rem 1.2rem;
+  border-radius: 4px;
+  background: var(--color-primary);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.legacy-lookup { margin-top: 1rem; }
+.legacy-lookup summary { cursor: pointer; font-size: 0.9rem; }
+
+@media (max-width: 600px) {
+  .account-row > button { margin-left: 0; }
+}

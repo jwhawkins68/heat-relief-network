@@ -18,6 +18,7 @@
 // why is not something an org should act on.
 
 import pool from '../db/pool.js';
+import { notifyAlert } from './residentNotifier.js';
 
 // National Weather Service heat index bands (°F).
 const NWS = {
@@ -183,6 +184,7 @@ async function runHeatWatch({ dryRun = false, now = new Date() } = {}) {
   const areas = await loadAreaState();
   const assessments = [];
   let alertsCreated = 0;
+  let emailsSent = 0;
   let suppressed = 0;
   let residentsTableMissing = false;
 
@@ -208,13 +210,27 @@ async function runHeatWatch({ dryRun = false, now = new Date() } = {}) {
         suppressed += 1;
         entry.reasons.push('An active alert of equal or greater severity already covers this county — not duplicating it.');
       } else if (!dryRun) {
-        await pool.query(
+        const { rows: created } = await pool.query(
           `INSERT INTO alerts (region, severity, message, source, starts_at, ends_at)
-           VALUES ($1, $2, $3, 'heat-watch-agent', now(), now() + interval '6 hours')`,
+           VALUES ($1, $2, $3, 'heat-watch-agent', now(), now() + interval '6 hours')
+           RETURNING id`,
           [area.region, assessment.severity, buildMessage(area, assessment)]
         );
         alertsCreated += 1;
         entry.alert_created = true;
+
+        // Email every opted-in resident in the county, with the cooling
+        // centers nearest each of them. An email outage must not stop the
+        // watch cycle, so failures are reported, not thrown.
+        try {
+          const emailed = await notifyAlert(created[0].id);
+          entry.emails_sent = emailed.sent;
+          entry.emails_failed = emailed.failed;
+          emailsSent += emailed.sent;
+        } catch (err) {
+          entry.emails_failed = null;
+          entry.reasons.push(`Alert created, but resident emails could not be sent: ${err.message}`);
+        }
       }
 
       const contacts = await contactListForArea(area);
@@ -234,6 +250,7 @@ async function runHeatWatch({ dryRun = false, now = new Date() } = {}) {
     areas_alerting: acting.length,
     alerts_created: alertsCreated,
     alerts_suppressed_as_duplicate: suppressed,
+    resident_emails_sent: emailsSent,
     residents_contacted: acting.reduce((n, a) => n + a.contacts.length, 0),
     note: residentsTableMissing
       ? 'The residents table does not exist yet, so no contact lists were built. Run migration_priority_access.sql to enable them.'

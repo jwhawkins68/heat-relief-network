@@ -86,11 +86,38 @@ Severity comes from the National Weather Service heat-index bands, unmodified:
 | Danger | 103 |
 | Extreme danger | 125 |
 
-Those thresholds are NWS's, not ours — we did not invent a scale. On top of the
-band, two local conditions can escalate severity: a **risk score at or above 28**
-(`HIGH_RISK_SCORE`), and **no open relief site within 8 km / ~5 miles**
-(`NO_RELIEF_RADIUS_M`). An area that is hot, vulnerable, and has nowhere to go
-is treated more urgently than an area that is merely hot.
+Those thresholds are NWS's, not ours — we did not invent a scale.
+
+On top of the band, severity can escalate **one step**, and only when *both*
+local conditions hold:
+
+```js
+const vulnerable = Number.isFinite(risk) && risk >= HIGH_RISK_SCORE;   // >= 28
+const uncovered  = area.nearest_open_site_m == null;                   // none within 8 km
+if (vulnerable && uncovered && rank < 3) { rank += 1; }
+```
+
+**Why both and not either.** Each condition alone describes a situation the
+system already handles. A vulnerable neighborhood that has an open cooling
+center within five miles has somewhere to send people — the ordinary alert is
+the right response. A neighborhood with no nearby open site but a low
+vulnerability score is mostly households who can cope at home. It is the
+*intersection* that is dangerous: people least able to withstand the heat, with
+nowhere to go. Escalating on either condition alone would fire on most of the
+map during a heat event, and an alert level that is always elevated stops
+carrying information.
+
+**Why it is capped.** The escalation adds exactly one rank and only when
+`rank < 3`, so it can lift advisory to warning or warning to emergency, but it
+can never invent a severity above emergency and it can never jump two levels.
+An escalation is a modifier on a measured reading, not a replacement for one —
+the NWS band is evidence, our local adjustment is judgment, and judgment should
+not be able to outrun the evidence by more than a step.
+
+**Overnight is a reason, not an escalation.** If conditions haven't broken
+between 9pm and 6am, the agent records that residents are getting no recovery
+window — a real risk signal — but it does **not** bump the rank. It goes in the
+`reasons` array so a human sees it and can weigh it.
 
 ### The bug worth remembering
 
@@ -151,9 +178,37 @@ A greedy assignment with round-robin balancing:
 5. Any area scoring at or above `HIGH_PRIORITY_SCORE = 28` with no shift
    covering it is reported as a gap.
 
-Greedy is the right algorithm here and not a shortcut. An optimal assignment
-would take longer to compute and be harder to explain, and the marginal gain is
-noise against the real-world variance in how long a check-in takes.
+### Greedy versus optimal — stated honestly
+
+Greedy is not the optimal assignment. A solver minimizing total travel while
+maximizing need covered would do measurably better on paper, and we are not
+claiming otherwise.
+
+We chose greedy for three reasons that hold **at current scale**: at five areas
+and a handful of shifts the gap between greedy and optimal is smaller than the
+real-world variance in how long a single check-in takes; a greedy plan can be
+explained to a coordinator in one sentence per assignment, and a coordinator who
+cannot follow the plan will not trust it at 6am; and greedy is stable — adding
+one volunteer perturbs one part of the plan, where a solver can reshuffle the
+whole thing and destroy a coordinator's mental model overnight.
+
+**We would move to a real solver (OR-Tools, or a min-cost-flow formulation) when
+any of these becomes true:**
+
+1. **Scale.** More than ~50 shifts or ~500 residents in a planning window. The
+   greedy gap grows with the number of near-ties, and near-ties grow with size.
+2. **Hard constraints appear.** Volunteer skills or languages, vehicle capacity,
+   accessibility requirements, time windows on individual visits. Greedy has
+   nowhere to put a constraint it must satisfy rather than prefer; a solver does.
+3. **Travel time stops being proportional to distance.** We currently rank by
+   straight-line distance from an area centroid. The moment real routing matters
+   — traffic, one-way systems, a river with three bridges — distance ordering
+   stops approximating the thing we actually care about.
+4. **Someone measures the gap and it is material.** The honest version of this
+   trigger: instrument a season of real plans, compute what an optimal assignment
+   would have covered, and switch if the difference is more than a few percent of
+   residents reached. We have not measured it. Until we do, "greedy is good
+   enough here" is a reasoned judgment, not a demonstrated fact.
 
 ### Safety rails
 
@@ -239,7 +294,82 @@ it done.
 
 ---
 
-## 7. What would have to change to use a trained model
+## 7. The boundary: no agent contacts a resident
+
+**None of these agents talks to a resident. Ever. Not by SMS, not by push, not
+by email, not by automated call.** Every one of them produces a *list for a
+human to act on*:
+
+| Agent | Produces | Acted on by |
+|---|---|---|
+| Heat Emergency Watch | an alert record + a ranked contact list | an outreach coordinator |
+| Outreach Dispatch Planner | a proposed shift assignment | a coordinator, who can override any line |
+| Site Status Freshness | a ranked confirm-first list | an org admin |
+
+This is a deliberate design boundary, not a gap we ran out of time to fill, and
+**it should survive future changes.** Three reasons:
+
+1. **A wrong automated message during an emergency is worse than no message.**
+   If the agent mis-scores someone and an automated system tells a resident to
+   go to a site that has closed, we have actively made their situation more
+   dangerous. A human in the loop catches the case where the data is stale.
+2. **Contact is a relationship, not a notification.** These are partner
+   organizations reaching people who are often already known to them. An
+   automated blast from an unfamiliar number does not land the same way as a
+   call from the clinic they visit.
+3. **Accountability needs a person.** If a resident asks why they were contacted
+   or why they weren't, someone has to be able to answer. An agent that acts
+   directly diffuses that responsibility to nobody.
+
+The system schema anticipates SMS and push (`users.phone`, `notify_sms`, and the
+stubbed Twilio/FCM config). **If those are ever wired up, this boundary is the
+decision to revisit explicitly and on the record — not something to let slide in
+as an implementation detail of a notification story.**
+
+---
+
+## 8. What the agents cannot see
+
+An agent that acts on people should be honest about the edges of its own
+perception. These are real limitations, not hedging:
+
+- **Resident data is self-reported and never re-verified.** Age, income,
+  employment, insurance, and household composition come from what someone typed
+  into the registration form. Nobody checks it, and nothing expires it. A
+  resident whose circumstances changed six months ago is still scored on the old
+  answers. The agents treat a need score as fact; it is a claim.
+- **Site status is only as fresh as the last organization update.** The system
+  knows what a partner org last told it, not what is true right now. This is
+  exactly why the Site Freshness agent exists — but note what that means: it
+  measures *our confidence in a claim*, and cannot measure the claim's accuracy.
+  A site that reported "open" two hours ago is `fresh` even if it closed one hour
+  ago.
+- **Heat index is only as live as the recompute job.** `areas.heat_index_f` is
+  currently hand-seeded and will be refreshed on whatever cadence the live NWS
+  integration (SCRUM-23) ends up running. The Heat Watch agent inherits that lag
+  exactly. It cannot detect a fast-moving change between refreshes, and it has no
+  way to know its own reading is stale.
+- **Coverage means "a site whose status says open," not "a site a person can
+  actually use."** The 8 km no-relief check asks the database, not reality. It
+  cannot see that the site has no parking, isn't on a bus route, closed early,
+  or is full.
+- **Nothing here models transportation.** Distance from an area centroid is a
+  proxy for reachability and a poor one for exactly the population we most care
+  about — people without a car, in heat, possibly elderly.
+- **Areas are coarse.** An area is a ZIP-level unit with one centroid. Everyone
+  in it gets the same heat index and the same distance-to-relief, which is wrong
+  at the edges of every area and most wrong in the largest ones.
+- **`pct_no_ac` has no authoritative free source at this geography** and is
+  seeded by judgment. It is weighted heavily in the risk score, so it is the
+  single input most capable of being confidently wrong. See §6 for what that
+  already cost us once.
+
+The common thread: **every one of these is a reason the output is a
+recommendation for a human, not an action.** See §7.
+
+---
+
+## 9. What would have to change to use a trained model
 
 Not "we ran out of time" — a specific list:
 
@@ -263,7 +393,7 @@ lesser one.
 
 ---
 
-## 8. Running all three
+## 10. Running all three
 
 ```bash
 # From the repo root

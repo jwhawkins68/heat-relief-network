@@ -288,6 +288,18 @@ async function handleIssueInvite() {
   }
 }
 
+/**
+ * Wellness check-in status (Checkpoint plan item D). residents rows come
+ * from GET /api/residents, which now left-joins each resident's most recent
+ * check_ins row.
+ */
+function renderCheckInCell(r) {
+  if (!r.latest_check_in_status) return '<span class="hint">No check-in yet</span>';
+  const label = r.latest_check_in_status === 'ok' ? "I'm safe" : 'Need help';
+  const when = new Date(r.latest_check_in_at).toLocaleString();
+  return `<span class="badge status-${r.latest_check_in_status}">${label}</span><br><span class="hint">${when}</span>`;
+}
+
 async function loadResidentQueue() {
   const container = document.getElementById('resident-queue-container');
   container.innerHTML = '<p class="empty-state">Loading residents…</p>';
@@ -306,13 +318,17 @@ async function loadResidentQueue() {
     const rows = residents.map((r) => `
       <tr>
         <td><span class="tier-badge tier-${r.priority_tier}">${TIER_LABELS[r.priority_tier]}</span></td>
-        <td>${escapeHtml(r.full_name)}</td>
+        <td><code class="registration-id-cell">${escapeHtml(r.registration_id || '—')}</code></td>
+        <td>${escapeHtml(r.full_name)}${r.email
+          ? `<br><a class="hint" href="mailto:${escapeHtml(r.email)}">${escapeHtml(r.email)}</a>`
+          : '<br><span class="hint">no login yet</span>'}</td>
         <td>${escapeHtml(r.city || '—')} ${escapeHtml(r.zip)}</td>
         <td>${r.age}</td>
         <td>${r.household_size}${r.children_under_5 ? ' <span title="Child under 5 in household">👶</span>' : ''}</td>
         <td>${EMPLOYMENT_LABELS[r.employment_status] || r.employment_status}</td>
         <td>${INSURANCE_LABELS[r.insurance_status] || r.insurance_status}</td>
         <td>${escapeHtml(r.income_band)}</td>
+        <td>${renderCheckInCell(r)}</td>
         <td>${new Date(r.created_at).toLocaleDateString()}</td>
       </tr>`).join('');
 
@@ -320,9 +336,9 @@ async function loadResidentQueue() {
       <table>
         <thead>
           <tr>
-            <th>Priority</th><th>Name</th><th>City / ZIP</th><th>Age</th>
+            <th>Priority</th><th>Registration ID</th><th>Name / email</th><th>City / ZIP</th><th>Age</th>
             <th>Household</th><th>Employment</th><th>Insurance</th>
-            <th>Income band</th><th>Registered</th>
+            <th>Income band</th><th>Check-in</th><th>Registered</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
