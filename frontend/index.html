@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Heat Relief Network</title>
+<title>HeatSafe</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="css/styles.css">
@@ -11,9 +11,11 @@
 <body>
 
 <header class="app-header">
-  <h1>🌡️ Heat Relief Network</h1>
+  <h1>🌡️ HeatSafe</h1>
   <nav>
     <a href="register.html">Register for priority access</a>
+    <a href="me.html">My info</a>
+    <a href="login.html">Log in</a>
     <a href="admin.html">Org / Admin portal →</a>
   </nav>
 </header>
@@ -41,8 +43,13 @@
       <input type="number" step="any" id="lon" name="lon" placeholder="-95.37">
     </div>
     <div class="field">
-      <label for="radius_m">Radius (m)</label>
-      <input type="number" id="radius_m" name="radius_m" value="8000" min="500" step="500">
+      <label for="radius_m">Search radius</label>
+      <select id="radius_m" name="radius_m">
+        <option value="8047">5 miles</option>
+        <option value="16093">10 miles</option>
+        <option value="40234" selected>25 miles</option>
+        <option value="80467">50 miles</option>
+      </select>
     </div>
     <div class="field">
       <label for="type">Type</label>
@@ -78,6 +85,15 @@
     </div>
     <div id="map"></div>
   </div>
+
+  <footer class="page-footer">
+    <p class="hint">
+      Don't have priority access yet?
+      <a href="register.html">Register for priority access</a> —
+      it takes a couple of minutes and helps outreach teams reach you first
+      during a heat emergency.
+    </p>
+  </footer>
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"

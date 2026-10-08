@@ -4,6 +4,12 @@ node_modules/
 # Environment variables — never commit real secrets/credentials
 .env
 .env.local
+# ...and any backup/variant of one. A file named `.env.backup-before-admin-token`
+# was sitting untracked-but-not-ignored, i.e. one `git add -A` away from putting
+# a live DATABASE_URL and ADMIN_TOKEN into public history. This pattern closes
+# that whole class. `.env.example` is the one variant that IS meant to be tracked.
+.env.*
+!.env.example
 
 # OS files
 .DS_Store
@@ -20,3 +26,7 @@ npm-debug.log*
 # Build output (if the frontend ever gets a build step)
 dist/
 build/
+
+# Local admin credentials — never commit
+ADMIN-ACCESS.local.md
+*.local.md

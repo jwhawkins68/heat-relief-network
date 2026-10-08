@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HeatSafe — Log in</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="app-header">
+  <h1>🌡️ HeatSafe</h1>
+  <nav>
+    <a href="index.html">← Find a site</a>
+    <a href="register.html">Register for priority access</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ── Log in ───────────────────────────────────────────── -->
+  <div class="admin-panel auth-panel" id="login-panel">
+    <h2 style="margin-top:0;">Log in to HeatSafe</h2>
+    <p class="hint">Use the email and password you chose when you registered.</p>
+    <form id="login-form">
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" id="login-submit">Log in</button>
+      <span class="save-msg" id="login-msg"></span>
+    </form>
+    <p class="hint">
+      <a href="#" id="show-forgot">Forgot your password?</a>
+    </p>
+    <p class="hint" style="margin-bottom:0;">
+      New to HeatSafe? <a href="register.html">Register with an invite code</a>.<br>
+      Registered before logins existed? Open <a href="me.html">My info</a> on the device
+      you registered with — it will ask you to add an email and password once.
+    </p>
+  </div>
+
+  <!-- ── Forgot password ─────────────────────────────────── -->
+  <div class="admin-panel auth-panel" id="forgot-panel" hidden>
+    <h2 style="margin-top:0;">Reset your password</h2>
+    <p class="hint">Enter the email you registered with. We'll send a link to choose a new password.</p>
+    <form id="forgot-form">
+      <div class="field">
+        <label for="forgot-email">Email</label>
+        <input type="email" id="forgot-email" autocomplete="email" required>
+      </div>
+      <button type="submit" id="forgot-submit">Email me a reset link</button>
+      <span class="save-msg" id="forgot-msg"></span>
+    </form>
+    <p class="hint" style="margin-bottom:0;"><a href="#" id="back-to-login">← Back to log in</a></p>
+  </div>
+
+  <!-- ── Choose a new password (from the emailed link) ───── -->
+  <div class="admin-panel auth-panel" id="reset-panel" hidden>
+    <h2 style="margin-top:0;">Choose a new password</h2>
+    <p class="hint">This signs you out everywhere else, then logs you in here.</p>
+    <form id="reset-form">
+      <div class="field">
+        <label for="reset-password">New password</label>
+        <input type="password" id="reset-password" autocomplete="new-password" minlength="8" maxlength="128" required>
+        <span class="why-we-ask">At least 8 characters.</span>
+      </div>
+      <div class="field">
+        <label for="reset-password-confirm">Confirm new password</label>
+        <input type="password" id="reset-password-confirm" autocomplete="new-password" maxlength="128" required>
+      </div>
+      <button type="submit" id="reset-submit">Save new password</button>
+      <span class="save-msg" id="reset-msg"></span>
+    </form>
+  </div>
+
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>

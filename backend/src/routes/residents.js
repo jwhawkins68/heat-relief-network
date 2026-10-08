@@ -1,8 +1,15 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
+import requireAdmin from '../middleware/requireAdmin.js';
 import { scoreResident, incomeBand } from '../services/needScore.js';
 import { matchServices } from '../services/serviceMatch.js';
 import { resolveZip, ZipLookupError } from '../services/zipLookup.js';
+import { resolveCounty } from '../services/countyLookup.js';
+import { hashPassword, validatePassword } from '../services/passwords.js';
+import { generateRegistrationId, normalizeEmail, validateEmail } from '../services/accounts.js';
+import { createSession } from '../services/sessions.js';
+import { authorizeResident } from '../middleware/residentAuth.js';
+import { sendWelcomeEmail } from '../services/residentNotifier.js';
 
 const router = Router();
 
@@ -11,6 +18,8 @@ const EMPLOYMENT_STATUSES = [
   'retired', 'part_time', 'student', 'full_time_indoor',
 ];
 const INSURANCE_STATUSES = ['personal', 'government_assistance', 'none'];
+
+const EMAIL_TAKEN = 'An account with this email already exists. Log in instead, or use a different email.';
 
 /**
  * Field-level validation. Returns { field: message } so the registration form
@@ -55,6 +64,16 @@ function validateIntake(body) {
   return errors;
 }
 
+/** Login details, required for every new registration. */
+function validateAccount(body) {
+  const errors = {};
+  const emailError = validateEmail(normalizeEmail(body.email));
+  if (emailError) errors.email = emailError;
+  const passwordError = validatePassword(body.password);
+  if (passwordError) errors.password = passwordError;
+  return errors;
+}
+
 /**
  * POST /api/residents/register
  * Redeems an invite code and registers a resident, scoring them and matching
@@ -71,9 +90,30 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: 'An invite code is required', errors: { invite_code: 'Enter your invite code' } });
   }
 
-  const errors = validateIntake(body);
+  const errors = { ...validateIntake(body), ...validateAccount(body) };
   if (Object.keys(errors).length) {
     return res.status(400).json({ error: 'Please correct the highlighted fields', errors });
+  }
+
+  // One profile per email. Checked up front so the resident gets a friendly
+  // message before their invite code is touched; the unique index on
+  // lower(email) is what actually guarantees it (see the 23505 handling in
+  // the catch below for two sign-ups racing each other).
+  const email = normalizeEmail(body.email);
+  let passwordHash;
+  try {
+    const { rows: existingEmail } = await pool.query(
+      'SELECT 1 FROM residents WHERE lower(email) = $1',
+      [email]
+    );
+    if (existingEmail[0]) {
+      return res.status(409).json({ error: EMAIL_TAKEN, code: 'email_taken', errors: { email: EMAIL_TAKEN } });
+    }
+    passwordHash = await hashPassword(body.password);
+  } catch (err) {
+    // Most likely cause: migration_resident_accounts.sql hasn't been run.
+    console.error('Registration pre-check failed:', err.message);
+    return res.status(500).json({ error: 'Registration is temporarily unavailable. Please try again shortly.' });
   }
 
   // Geocode before opening the transaction — it's a network call and we don't
@@ -128,22 +168,26 @@ router.post('/register', async (req, res) => {
     };
 
     const score = scoreResident(intake);
+    const region = resolveCounty(body.city ? String(body.city).trim() : place.city, place.state);
 
     const { rows: residentRows } = await client.query(
       `INSERT INTO residents (
-         full_name, street_address, city, state, zip, location,
+         full_name, street_address, city, state, zip, location, region,
          age, household_size, children_under_5,
          employment_status, insurance_status, annual_income,
          fpl_pct, need_score, priority_tier,
-         invite_id, consent_given_at
+         invite_id, consent_given_at,
+         email, password_hash, registration_id
        ) VALUES (
-         $1, $2, $3, $4, $5, ST_MakePoint($6, $7)::geography,
-         $8, $9, $10,
-         $11, $12, $13,
-         $14, $15, $16,
-         $17, now()
+         $1, $2, $3, $4, $5, ST_MakePoint($6, $7)::geography, $8,
+         $9, $10, $11,
+         $12, $13, $14,
+         $15, $16, $17,
+         $18, now(),
+         $19, $20, $21
        )
-       RETURNING id, full_name, city, zip, need_score, priority_tier, created_at`,
+       RETURNING id, full_name, city, zip, need_score, priority_tier, created_at,
+                 registration_id, email`,
       [
         String(body.full_name).trim(),
         body.street_address ? String(body.street_address).trim() : null,
@@ -152,6 +196,7 @@ router.post('/register', async (req, res) => {
         place.zip,
         place.lon,
         place.lat,
+        region,
         intake.age,
         intake.household_size,
         intake.children_under_5,
@@ -162,6 +207,11 @@ router.post('/register', async (req, res) => {
         score.score,
         score.tier,
         invite.id,
+        email,
+        passwordHash,
+        // Random, so a collision is ~1 in 10^12; the unique index would turn
+        // one into a failed (retryable) registration rather than a duplicate.
+        generateRegistrationId(),
       ]
     );
 
@@ -173,6 +223,9 @@ router.post('/register', async (req, res) => {
       [resident.id, invite.id]
     );
 
+    // Created inside the transaction: no committed resident, no session.
+    const session = await createSession(resident.id, client);
+
     await client.query('COMMIT');
 
     // Matching runs after commit — it only reads sites, and a site-lookup
@@ -183,10 +236,13 @@ router.post('/register', async (req, res) => {
     res.status(201).json({
       resident: {
         id: resident.id,
+        registration_id: resident.registration_id,
+        email: resident.email,
         full_name: resident.full_name,
         city: resident.city,
         zip: resident.zip,
       },
+      session: { token: session.token, expires_at: session.expires_at },
       priority: {
         tier: score.tier,
         tier_label: score.tier_label,
@@ -194,10 +250,18 @@ router.post('/register', async (req, res) => {
       },
       ...match,
     });
+
+    // Registration ID, current alerts and nearest cooling centers, by email.
+    // Fire and forget: it never throws, and a slow mail server must not hold
+    // up the resident's confirmation screen.
+    sendWelcomeEmail(resident.id);
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
-    // Log the error but never the request body — it contains income and
-    // insurance status.
+    if (err.code === '23505' && err.constraint === 'residents_email_unique') {
+      return res.status(409).json({ error: EMAIL_TAKEN, code: 'email_taken', errors: { email: EMAIL_TAKEN } });
+    }
+    // Log the error but never the request body — it contains income,
+    // insurance status and a password.
     console.error('Resident registration failed:', err.message);
     res.status(500).json({ error: 'Registration failed. Please try again.' });
   } finally {
@@ -211,30 +275,37 @@ router.post('/register', async (req, res) => {
  * Raw annual_income is NEVER included — only a coarse band. See
  * docs/NEED-SCORING.md for why.
  */
-router.get('/', async (req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
   const { tier, city } = req.query;
   const conditions = [];
   const values = [];
   let i = 1;
 
   if (tier) {
-    conditions.push(`priority_tier = $${i++}`);
+    conditions.push(`r.priority_tier = $${i++}`);
     values.push(Number(tier));
   }
   if (city) {
-    conditions.push(`city ILIKE $${i++}`);
+    conditions.push(`r.city ILIKE $${i++}`);
     values.push(city);
   }
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
   try {
     const { rows } = await pool.query(
-      `SELECT id, full_name, city, zip, age, household_size, children_under_5,
-              employment_status, insurance_status, fpl_pct,
-              need_score, priority_tier, created_at
-       FROM residents
+      `SELECT r.id, r.registration_id, r.email, r.full_name, r.city, r.zip, r.age, r.household_size, r.children_under_5,
+              r.employment_status, r.insurance_status, r.fpl_pct,
+              r.need_score, r.priority_tier, r.created_at,
+              ci.status AS latest_check_in_status, ci.responded_at AS latest_check_in_at
+       FROM residents r
+       LEFT JOIN LATERAL (
+         SELECT status, responded_at FROM check_ins
+         WHERE resident_id = r.id
+         ORDER BY responded_at DESC
+         LIMIT 1
+       ) ci ON true
        ${where}
-       ORDER BY need_score DESC, created_at ASC
+       ORDER BY r.need_score DESC, r.created_at ASC
        LIMIT 200`,
       values
     );
@@ -254,7 +325,7 @@ router.get('/', async (req, res) => {
  * Re-runs matching for an already-registered resident. Site status changes
  * through the day, so yesterday's answer may not be today's.
  */
-router.get('/:id/match', async (req, res) => {
+router.get('/:id/match', requireAdmin, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, full_name, age, household_size, children_under_5,
@@ -278,6 +349,195 @@ router.get('/:id/match', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to match resident' });
+  }
+});
+
+
+// ─────────────────────────────────────────────
+// Resident self-service (Checkpoint plan items A, B, D)
+//
+// ACCESS: every route below goes through authorizeResident
+// (middleware/residentAuth.js). A resident proves who they are with a login
+// session (email + password, see routes/auth.js). Profiles registered before
+// accounts existed have no password yet; for those only, the resident's own
+// UUID still works as a bearer capability until they claim the profile by
+// adding an email and password on the My info page. Once claimed, the UUID
+// alone opens nothing.
+// ─────────────────────────────────────────────
+
+/**
+ * GET /api/residents/:id
+ * A resident's own info, for the "My HeatSafe info" page. annual_income is
+ * deliberately never included — see the NOTE beside it in POST /register.
+ */
+router.get('/:id', authorizeResident, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, registration_id, email, notify_email,
+              password_hash IS NOT NULL AS has_login,
+              full_name, street_address, city, state, zip, region,
+              age, household_size, children_under_5,
+              employment_status, insurance_status, fpl_pct,
+              need_score, priority_tier, created_at
+       FROM residents WHERE id = $1`,
+      [req.params.id]
+    );
+    const r = rows[0];
+    if (!r) return res.status(404).json({ error: 'Resident not found' });
+
+    const { fpl_pct, ...safe } = r;
+    res.json({ ...safe, income_band: incomeBand(fpl_pct) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch resident' });
+  }
+});
+
+/**
+ * PATCH /api/residents/:id
+ * Self-service profile update. Takes the same shape as registration (minus
+ * invite_code) and re-runs geocoding + need-scoring, since a changed ZIP or
+ * household detail can change both the priority tier and which sites get
+ * matched. This is a full replace of the editable fields rather than a
+ * partial merge, EXCEPT for annual_income: since GET /:id above never
+ * echoes it back, the resident's edit form can't pre-fill it, so leaving it
+ * blank here means "no change" and keeps whatever is already on file rather
+ * than being coerced to 0.
+ */
+router.patch('/:id', authorizeResident, async (req, res) => {
+  const body = req.body || {};
+  const incomeProvided = body.annual_income !== undefined && body.annual_income !== null && body.annual_income !== '';
+
+  const errors = validateIntake({ ...body, annual_income: incomeProvided ? body.annual_income : 0 });
+  if (Object.keys(errors).length) {
+    return res.status(400).json({ error: 'Please correct the highlighted fields', errors });
+  }
+
+  let place;
+  try {
+    place = await resolveZip(body.zip);
+  } catch (err) {
+    if (err instanceof ZipLookupError) {
+      return res.status(err.status).json({ error: err.message, errors: { zip: err.message } });
+    }
+    throw err;
+  }
+
+  try {
+    const { rows: existingRows } = await pool.query(
+      'SELECT annual_income FROM residents WHERE id = $1',
+      [req.params.id]
+    );
+    const existing = existingRows[0];
+    if (!existing) return res.status(404).json({ error: 'Resident not found' });
+
+    const intake = {
+      age: Number(body.age),
+      household_size: Number(body.household_size),
+      children_under_5: body.children_under_5 === true,
+      employment_status: body.employment_status,
+      insurance_status: body.insurance_status,
+      annual_income: incomeProvided ? Number(body.annual_income) : Number(existing.annual_income),
+      lat: place.lat,
+      lon: place.lon,
+    };
+
+    const score = scoreResident(intake);
+    const region = resolveCounty(body.city ? String(body.city).trim() : place.city, place.state);
+
+    const { rows } = await pool.query(
+      `UPDATE residents SET
+         full_name = $1, street_address = $2, city = $3, state = $4, zip = $5,
+         location = ST_MakePoint($6, $7)::geography, region = $8,
+         age = $9, household_size = $10, children_under_5 = $11,
+         employment_status = $12, insurance_status = $13, annual_income = $14,
+         fpl_pct = $15, need_score = $16, priority_tier = $17
+       WHERE id = $18
+       RETURNING id, registration_id, email, full_name, street_address, city, state, zip, region,
+                 age, household_size, children_under_5,
+                 employment_status, insurance_status, fpl_pct,
+                 need_score, priority_tier, created_at`,
+      [
+        String(body.full_name).trim(),
+        body.street_address ? String(body.street_address).trim() : null,
+        body.city ? String(body.city).trim() : place.city,
+        place.state,
+        place.zip,
+        place.lon,
+        place.lat,
+        region,
+        intake.age,
+        intake.household_size,
+        intake.children_under_5,
+        intake.employment_status,
+        intake.insurance_status,
+        intake.annual_income,
+        score.fpl_pct,
+        score.score,
+        score.tier,
+        req.params.id,
+      ]
+    );
+
+    const r = rows[0];
+    const { fpl_pct, ...safe } = r;
+    res.json({
+      resident: { ...safe, income_band: incomeBand(fpl_pct) },
+      priority: { tier: score.tier, tier_label: score.tier_label, reasons: score.reasons },
+    });
+  } catch (err) {
+    console.error('Resident update failed:', err.message);
+    res.status(500).json({ error: 'Update failed. Please try again.' });
+  }
+});
+
+/**
+ * POST /api/residents/:id/check-in
+ * Records the resident's own response to a wellness check-in ("I'm safe" /
+ * "I need help"). The admin resident queue (GET /) surfaces the latest one.
+ */
+router.post('/:id/check-in', authorizeResident, async (req, res) => {
+  const body = req.body || {};
+  const status = body.status;
+  if (!['ok', 'need_help'].includes(status)) {
+    return res.status(400).json({ error: "status must be 'ok' or 'need_help'" });
+  }
+  const note = body.note ? String(body.note).trim().slice(0, 500) : null;
+
+  try {
+    const { rows: residentRows } = await pool.query('SELECT id FROM residents WHERE id = $1', [req.params.id]);
+    if (!residentRows[0]) return res.status(404).json({ error: 'Resident not found' });
+
+    const { rows } = await pool.query(
+      `INSERT INTO check_ins (resident_id, status, note)
+       VALUES ($1, $2, $3)
+       RETURNING id, status, note, responded_at`,
+      [req.params.id, status, note]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to record check-in' });
+  }
+});
+
+/**
+ * GET /api/residents/:id/check-ins
+ * A resident's own check-in history, most recent first.
+ */
+router.get('/:id/check-ins', authorizeResident, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, status, note, responded_at FROM check_ins
+       WHERE resident_id = $1
+       ORDER BY responded_at DESC
+       LIMIT 20`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch check-ins' });
   }
 });
 

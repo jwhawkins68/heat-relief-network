@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
+import requireAdmin from '../middleware/requireAdmin.js';
 
 const router = Router();
 
@@ -79,7 +80,7 @@ router.get('/:id', async (req, res) => {
 });
 
 /** PATCH /api/sites/:id/status — org portal uses this to update status */
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', requireAdmin, async (req, res) => {
   const { status, updated_by } = req.body;
   if (!['open', 'closed', 'full', 'unknown'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });

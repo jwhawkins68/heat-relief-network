@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Heat Relief Network — Org Portal</title>
+<title>HeatSafe — Org Portal</title>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
 <header class="app-header">
-  <h1>🌡️ Heat Relief Network — Org Portal</h1>
+  <h1>🌡️ HeatSafe — Org Portal</h1>
   <nav>
     <a href="index.html">← Resident view</a>
   </nav>
@@ -18,21 +18,27 @@
 <main>
   <div class="admin-panel">
     <p class="hint">
-      ⚠️ There's no login yet (auth on the admin routes is stubbed on the backend —
-      see the project README). For now, paste your organization's ID below to load
-      its sites.
+      🔒 This portal is restricted. Enter your organization's access token to
+      manage sites, issue invite codes, and view the resident priority queue.
+      The token is held for this browser tab only and is never stored on disk.
     </p>
     <form id="org-form" class="filters">
+      <div class="field" style="flex: 1; min-width: 240px;">
+        <label for="admin_token">Organization access token</label>
+        <input type="password" id="admin_token" name="admin_token"
+               autocomplete="current-password" required>
+      </div>
       <div class="field" style="flex: 1; min-width: 260px;">
         <label for="org_id">Organization ID (UUID)</label>
-        <input type="text" id="org_id" name="org_id" placeholder="e.g. 6f2f9b2e-..." required>
+        <input type="text" id="org_id" name="org_id" required>
       </div>
-      <button type="submit">Load sites</button>
+      <button type="submit">Sign in &amp; load sites</button>
     </form>
+    <p class="save-msg" id="admin-auth-msg"></p>
   </div>
 
   <div id="org-sites-container">
-    <p class="empty-state">Enter an organization ID above to load its sites.</p>
+    <p class="empty-state">Sign in above to load your organization’s sites.</p>
   </div>
 
   <div class="admin-panel" style="margin-top: 1.5rem;">
@@ -101,6 +107,34 @@
 
     <div id="resident-queue-container">
       <p class="empty-state">Click "Load resident queue" to see registered residents by priority.</p>
+    </div>
+  </div>
+
+  <div class="admin-panel" id="agents-panel" style="margin-top: 1.5rem;">
+    <h2 style="margin-top:0;">🤖 Agents &mdash; they run on their own</h2>
+    <p class="hint">
+      Neither of these waits to be asked. The <strong>Heat Watch</strong> agent runs on a
+      schedule, reads current conditions for every pilot area and decides whether to raise an
+      alert &mdash; escalating a neighbourhood when it is both vulnerable and has no open site
+      nearby. The <strong>Dispatch Planner</strong> reads the volunteer shifts already on the
+      books and builds an outreach plan, highest-need neighbourhood first. Both explain every
+      decision; neither acts on a resident without saying why.
+    </p>
+
+    <div class="filters" style="margin-bottom: 0.75rem;">
+      <button type="button" id="heat-watch-preview-btn" class="secondary">Preview heat watch (writes nothing)</button>
+      <button type="button" id="heat-watch-run-btn">Run heat watch</button>
+      <div class="field">
+        <label for="dispatch-hours">Plan window (hours)</label>
+        <input type="number" id="dispatch-hours" value="12" min="1" max="168" step="1">
+      </div>
+      <button type="button" id="dispatch-btn">Build outreach plan</button>
+      <button type="button" id="freshness-btn" class="secondary">Check site status freshness</button>
+      <button type="button" id="freshness-expire-btn" class="secondary">Retire expired claims</button>
+    </div>
+
+    <div id="agent-output">
+      <p class="empty-state">Run an agent to see what it decided and why.</p>
     </div>
   </div>
 

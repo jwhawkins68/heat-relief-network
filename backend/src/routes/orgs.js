@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
+import requireAdmin from '../middleware/requireAdmin.js';
 
 const router = Router();
 
 /** GET /api/orgs/:id/sites — sites managed by an org, for the admin portal */
-router.get('/:id/sites', async (req, res) => {
+router.get('/:id/sites', requireAdmin, async (req, res) => {
   try {
     const { rows } = await pool.query(
       'SELECT id, name, type, status, status_updated_at FROM sites WHERE org_id = $1',

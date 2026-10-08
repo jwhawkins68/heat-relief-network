@@ -1,10 +1,12 @@
 // Heat Relief Network — org/admin portal.
 // Lets an org update the open/closed/full status of the sites it manages.
 //
-// NOTE: the backend has no auth on these routes yet (see README "What's
-// stubbed"). Once auth is added, replace the manual org-id field below with
-// the logged-in org's id, and pass the authenticated user's id as
-// `updated_by` instead of leaving it null.
+// ACCESS: the admin routes are gated by a shared organization token
+// (ADMIN_TOKEN on the server, sent as the x-admin-token header — see
+// backend/src/middleware/requireAdmin.js). This is a shared secret, not
+// per-user auth: when real org user accounts land, replace the manual org-id
+// field below with the logged-in org's id and pass the authenticated user's
+// id as `updated_by` instead of leaving it null.
 
 const STATUS_OPTIONS = ['open', 'closed', 'full', 'unknown'];
 
@@ -62,6 +64,7 @@ async function loadOrgSites(orgId) {
     });
   } catch (err) {
     container.innerHTML = `<p class="error-state">Couldn't load sites: ${err.message}. Is the backend running at ${API_BASE}?</p>`;
+    throw err; // let the sign-in handler clear a rejected token
   }
 }
 
@@ -198,10 +201,21 @@ async function recomputeArea(btn) {
 document.addEventListener('DOMContentLoaded', () => {
   populateCountyList();
 
-  document.getElementById('org-form').addEventListener('submit', (e) => {
+  document.getElementById('org-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const msg = document.getElementById('admin-auth-msg');
     const orgId = document.getElementById('org_id').value.trim();
-    if (orgId) loadOrgSites(orgId);
+    setAdminToken(document.getElementById('admin_token').value.trim());
+    if (!orgId) return;
+
+    msg.textContent = '';
+    try {
+      await loadOrgSites(orgId);
+    } catch (err) {
+      // A bad token clears itself so the next attempt starts clean.
+      setAdminToken('');
+      msg.textContent = err.message || 'Could not sign in.';
+    }
   });
 
   document.getElementById('load-risk-areas-btn').addEventListener('click', () => {
@@ -274,6 +288,18 @@ async function handleIssueInvite() {
   }
 }
 
+/**
+ * Wellness check-in status (Checkpoint plan item D). residents rows come
+ * from GET /api/residents, which now left-joins each resident's most recent
+ * check_ins row.
+ */
+function renderCheckInCell(r) {
+  if (!r.latest_check_in_status) return '<span class="hint">No check-in yet</span>';
+  const label = r.latest_check_in_status === 'ok' ? "I'm safe" : 'Need help';
+  const when = new Date(r.latest_check_in_at).toLocaleString();
+  return `<span class="badge status-${r.latest_check_in_status}">${label}</span><br><span class="hint">${when}</span>`;
+}
+
 async function loadResidentQueue() {
   const container = document.getElementById('resident-queue-container');
   container.innerHTML = '<p class="empty-state">Loading residents…</p>';
@@ -292,13 +318,17 @@ async function loadResidentQueue() {
     const rows = residents.map((r) => `
       <tr>
         <td><span class="tier-badge tier-${r.priority_tier}">${TIER_LABELS[r.priority_tier]}</span></td>
-        <td>${escapeHtml(r.full_name)}</td>
+        <td><code class="registration-id-cell">${escapeHtml(r.registration_id || '—')}</code></td>
+        <td>${escapeHtml(r.full_name)}${r.email
+          ? `<br><a class="hint" href="mailto:${escapeHtml(r.email)}">${escapeHtml(r.email)}</a>`
+          : '<br><span class="hint">no login yet</span>'}</td>
         <td>${escapeHtml(r.city || '—')} ${escapeHtml(r.zip)}</td>
         <td>${r.age}</td>
         <td>${r.household_size}${r.children_under_5 ? ' <span title="Child under 5 in household">👶</span>' : ''}</td>
         <td>${EMPLOYMENT_LABELS[r.employment_status] || r.employment_status}</td>
         <td>${INSURANCE_LABELS[r.insurance_status] || r.insurance_status}</td>
         <td>${escapeHtml(r.income_band)}</td>
+        <td>${renderCheckInCell(r)}</td>
         <td>${new Date(r.created_at).toLocaleDateString()}</td>
       </tr>`).join('');
 
@@ -306,9 +336,9 @@ async function loadResidentQueue() {
       <table>
         <thead>
           <tr>
-            <th>Priority</th><th>Name</th><th>City / ZIP</th><th>Age</th>
+            <th>Priority</th><th>Registration ID</th><th>Name / email</th><th>City / ZIP</th><th>Age</th>
             <th>Household</th><th>Employment</th><th>Insurance</th>
-            <th>Income band</th><th>Registered</th>
+            <th>Income band</th><th>Check-in</th><th>Registered</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -338,4 +368,222 @@ document.addEventListener('DOMContentLoaded', () => {
       msg.textContent = 'Select the code above to copy it.';
     }
   });
+});
+
+// ─────────────────────────────────────────────
+// Agents — Heat Watch (SCRUM-38) and Dispatch Planner (SCRUM-39)
+//
+// Both render their REASONS, not just their conclusions. An agent that
+// escalates a neighbourhood to "emergency" without showing its working is not
+// something a coordinator should act on.
+// ─────────────────────────────────────────────
+
+const SEVERITY_TIER = { emergency: 1, warning: 2, advisory: 3 };
+
+function agentBusy(on, label) {
+  ['heat-watch-preview-btn', 'heat-watch-run-btn', 'dispatch-btn',
+   'freshness-btn', 'freshness-expire-btn'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = on;
+  });
+  if (on) {
+    document.getElementById('agent-output').innerHTML =
+      `<p class="empty-state">${escapeHtml(label)}</p>`;
+  }
+}
+
+function reasonList(reasons) {
+  return `<ul class="reason-list">${reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join('')}</ul>`;
+}
+
+function renderHeatWatch(result) {
+  const out = document.getElementById('agent-output');
+  const head = `
+    <p class="hint">
+      ${result.dry_run ? '<strong>Preview only — nothing was written.</strong> ' : ''}
+      Assessed ${result.areas_assessed} areas · ${result.areas_alerting} alerting ·
+      ${result.alerts_created} alert(s) created ·
+      ${result.alerts_suppressed_as_duplicate} suppressed as duplicates.
+      ${result.note ? `<br><em>${escapeHtml(result.note)}</em>` : ''}
+    </p>`;
+
+  const acting = result.assessments.filter((a) => a.severity);
+  const quiet = result.assessments.filter((a) => !a.severity);
+
+  if (!acting.length) {
+    out.innerHTML = head + '<p class="empty-state">No area crossed an alert threshold. Nothing to do.</p>'
+      + quietBlock(quiet);
+    return;
+  }
+
+  acting.sort((a, b) => (SEVERITY_TIER[a.severity] || 9) - (SEVERITY_TIER[b.severity] || 9));
+
+  const cards = acting.map((a) => `
+    <div class="site-card">
+      <div class="site-card-top">
+        <strong>${escapeHtml(a.area)}</strong>
+        <span class="tier-badge tier-${SEVERITY_TIER[a.severity] || 3}">${a.severity.toUpperCase()}</span>
+      </div>
+      <div class="site-meta">
+        ${escapeHtml(a.region || '—')} · ${a.heat_index_f ?? '?'}°F · vulnerability ${a.risk_score ?? '?'}
+        · ${a.open_site_nearby ? 'open site nearby' : '<strong>no open site nearby</strong>'}
+        ${a.escalated ? ' · <strong>escalated</strong>' : ''}
+        ${a.alert_created ? ' · alert written' : ''}
+      </div>
+      ${reasonList(a.reasons)}
+      ${a.contacts.length ? `
+        <p class="hint" style="margin:0.5rem 0 0.25rem;"><strong>Contact first (${a.contacts.length}):</strong></p>
+        <ol class="reason-list">
+          ${a.contacts.slice(0, 8).map((c) =>
+            `<li>Tier ${c.priority_tier} · ${escapeHtml(c.full_name)} · ${escapeHtml(c.city || '')} ${escapeHtml(c.zip)} · ${c.distance_mi} mi</li>`
+          ).join('')}
+        </ol>
+        ${a.contacts.length > 8 ? `<p class="hint">…and ${a.contacts.length - 8} more.</p>` : ''}` : ''}
+    </div>`).join('');
+
+  out.innerHTML = head + cards + quietBlock(quiet);
+}
+
+function quietBlock(quiet) {
+  if (!quiet.length) return '';
+  return `
+    <p class="hint" style="margin-top:1rem;"><strong>No action needed (${quiet.length}):</strong></p>
+    <ul class="reason-list">
+      ${quiet.map((a) => `<li>${escapeHtml(a.area)} — ${escapeHtml(a.reasons[0] || '')}</li>`).join('')}
+    </ul>`;
+}
+
+function renderDispatch(plan) {
+  const out = document.getElementById('agent-output');
+  const head = `
+    <p class="hint">
+      ${plan.shifts_considered} scheduled shift(s) in the next ${plan.window_hours}h ·
+      ${plan.assignments_made} assignment(s) · ${plan.residents_planned} resident(s) planned.
+      ${plan.note ? `<br><em>${escapeHtml(plan.note)}</em>` : ''}
+    </p>`;
+
+  const gaps = plan.coverage_gaps.length ? `
+    <div class="admin-panel" style="background:#FDE8E4;border-color:#F4C9C0;margin:0.75rem 0;">
+      <strong>Coverage gaps — high-need areas with nobody scheduled (${plan.coverage_gaps.length})</strong>
+      <ul class="reason-list">
+        ${plan.coverage_gaps.map((g) =>
+          `<li><strong>${escapeHtml(g.area)}</strong> (${escapeHtml(g.region || '—')}) — ${escapeHtml(g.why)}</li>`
+        ).join('')}
+      </ul>
+    </div>` : '';
+
+  const assignments = plan.assignments.length ? plan.assignments.map((a) => `
+    <div class="site-card">
+      <div class="site-card-top">
+        <strong>${escapeHtml(a.volunteer)}</strong>
+        <span class="badge">${escapeHtml(a.area)}</span>
+      </div>
+      <div class="site-meta">
+        ${new Date(a.shift_start).toLocaleString()} – ${new Date(a.shift_end).toLocaleTimeString()}
+        · ${escapeHtml(a.site.name)} · ${escapeHtml(a.site.address)}
+      </div>
+      <p class="hint" style="margin:0.35rem 0;">${escapeHtml(a.why)}</p>
+      ${a.warning ? `<p class="error-state" style="margin:0.35rem 0;">${escapeHtml(a.warning)}</p>` : ''}
+      ${a.check_ins.length ? `
+        <p class="hint" style="margin:0.5rem 0 0.25rem;"><strong>Check in on:</strong></p>
+        <ol class="reason-list">
+          ${a.check_ins.map((c) =>
+            `<li>Tier ${c.priority_tier} · ${escapeHtml(c.full_name)} · ${c.distance_mi} mi</li>`).join('')}
+        </ol>`
+        : '<p class="hint">No registered residents in range for this shift.</p>'}
+    </div>`).join('')
+    : '<p class="empty-state">No shifts are scheduled in this window, so there is nothing to plan.</p>';
+
+  const unmatched = plan.unmatched_shifts.length ? `
+    <p class="hint" style="margin-top:1rem;"><strong>Shifts outside the pilot region (${plan.unmatched_shifts.length}):</strong></p>
+    <ul class="reason-list">
+      ${plan.unmatched_shifts.map((u) =>
+        `<li>${escapeHtml(u.volunteer)} at ${escapeHtml(u.site)} — ${escapeHtml(u.why)}</li>`).join('')}
+    </ul>` : '';
+
+  out.innerHTML = head + gaps + assignments + unmatched;
+}
+
+async function callAgent(fn, label, render) {
+  agentBusy(true, label);
+  try {
+    render(await fn());
+  } catch (err) {
+    document.getElementById('agent-output').innerHTML =
+      `<p class="error-state">${escapeHtml(err.message)}</p>`;
+  } finally {
+    agentBusy(false);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('heat-watch-preview-btn').addEventListener('click', () =>
+    callAgent(() => runHeatWatch(true), 'Previewing heat watch…', renderHeatWatch));
+
+  document.getElementById('heat-watch-run-btn').addEventListener('click', () =>
+    callAgent(() => runHeatWatch(false), 'Running heat watch…', renderHeatWatch));
+
+  document.getElementById('dispatch-btn').addEventListener('click', () => {
+    const hours = Number(document.getElementById('dispatch-hours').value) || 12;
+    callAgent(() => fetchDispatchPlan(hours), 'Building outreach plan…', renderDispatch);
+  });
+});
+
+// ─────────────────────────────────────────────
+// Site Status Freshness agent (SCRUM-48)
+//
+// Ranks what to re-confirm first. The distance half of the priority engine
+// only works if site status is current, so this is the agent that keeps the
+// other two fed.
+// ─────────────────────────────────────────────
+
+const CONFIDENCE_TIER = { expired: 1, unverifiable: 1, unconfirmed: 2, aging: 2, fresh: 3 };
+
+function renderFreshness(r) {
+  const out = document.getElementById('agent-output');
+
+  const bands = Object.entries(r.by_confidence)
+    .map(([k, v]) => `${v} ${escapeHtml(k)}`).join(' · ');
+
+  const head = `
+    <p class="hint">
+      Assessed ${r.sites_assessed} sites — ${bands}.
+      ${r.expire_enabled
+        ? `<strong>${r.claims_retired} expired claim(s) retired to "unknown".</strong>`
+        : r.would_retire
+          ? `<strong>${r.would_retire} claim(s) are past believable</strong> — use “Retire expired claims” to clear them.`
+          : ''}
+    </p>`;
+
+  if (!r.confirm_first.length) {
+    out.innerHTML = head + '<p class="empty-state">Every site status is current. Nothing to confirm.</p>';
+    return;
+  }
+
+  const cards = r.confirm_first.map((s, i) => `
+    <div class="site-card">
+      <div class="site-card-top">
+        <strong>${i + 1}. ${escapeHtml(s.name)}</strong>
+        <span class="tier-badge tier-${CONFIDENCE_TIER[s.confidence] || 3}">${escapeHtml(s.confidence)}</span>
+      </div>
+      <div class="site-meta">
+        Reads “${escapeHtml(s.status)}”${s.age_hours !== null ? ` · confirmed ${s.age_hours}h ago` : ' · never confirmed'}
+        · ${escapeHtml(s.area || 'no area matched')} · ${s.area_heat_f ?? '?'}°F
+        · confirm-first score ${s.confirmation_priority}
+        ${s.under_heat ? ' · <strong>under heat pressure</strong>' : ''}
+        ${s.retired ? ' · <strong>retired to unknown</strong>' : ''}
+      </div>
+      <div class="site-meta">${escapeHtml(s.address || '')}</div>
+      ${reasonList(s.reasons)}
+    </div>`).join('');
+
+  out.innerHTML = head + cards;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('freshness-btn').addEventListener('click', () =>
+    callAgent(() => runSiteFreshness(false), 'Checking site status freshness…', renderFreshness));
+
+  document.getElementById('freshness-expire-btn').addEventListener('click', () =>
+    callAgent(() => runSiteFreshness(true), 'Retiring expired claims…', renderFreshness));
 });
