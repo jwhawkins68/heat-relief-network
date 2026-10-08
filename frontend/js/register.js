@@ -44,14 +44,14 @@ const INTAKE_FIELDS = [
 // NOTE: these are single-use codes (one resident each), and because they are
 // listed here anyone who opens this page can see them.
 const INVITE_OPTIONS = [
-  { site: 'Sunnyside Community Center & Park',  city: 'Houston',     code: 'S5BZ8HC9' },
-  { site: 'Park Place Regional Library',        city: 'Houston',     code: 'LBRH67KK' },
+  { site: 'Sunnyside Community Center & Park',  city: 'Houston',     code: 'AUMLRGTJ' },
+  { site: 'Park Place Regional Library',        city: 'Houston',     code: 'RY7VPCR4' },
   { site: 'Young Neighborhood Library',         city: 'Houston',     code: 'C3786LMD' },
   { site: 'Martin Luther King Jr. Branch Library', city: 'Dallas',   code: '8KTBKP9C' },
-  { site: 'Ella Mae Shamblee Library',          city: 'Fort Worth',  code: 'KE5CTMGD' },
-  { site: 'Southeast Branch Library',           city: 'Austin',      code: 'NPBB3C69' },
+  { site: 'Ella Mae Shamblee Library',          city: 'Fort Worth',  code: '9M4J4R4H' },
+  { site: 'Southeast Branch Library',           city: 'Austin',      code: '3VUJVDKG' },
   { site: 'Dottie Jordan Recreation Center',    city: 'Austin',      code: 'Q568RSC6' },
-  { site: 'BiblioTech West',                    city: 'San Antonio', code: 'DMHT5KYD' },
+  { site: 'BiblioTech West',                    city: 'San Antonio', code: 'E2BH7FC7' },
 ];
 
 function optionLabel(o, suffix) {
