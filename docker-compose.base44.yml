@@ -1,0 +1,108 @@
+# Base44 sandbox/dev stack for the Heat Relief Network.
+#
+# Runs everything from the cloned source with live reload:
+#   web  -> static frontend (host port 3000) + reverse proxy for /api -> api
+#   api  -> Express backend, `node --watch` (edits reload on save)
+#   db   -> PostgreSQL 17 + PostGIS
+#   schema -> one-shot: creates the schema (and example areas) on an empty DB
+#
+# Start with: docker compose -f docker-compose.base44.yml up -d --build
+services:
+  db:
+    image: postgis/postgis:17-3.4
+    restart: on-failure
+    environment:
+      - POSTGRES_USER=heat_relief
+      - POSTGRES_PASSWORD=heat_relief
+      - POSTGRES_DB=heat_relief
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U heat_relief -d heat_relief"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # One-shot: applies backend/src/db/schema.sql only when the schema is
+  # missing, then loads the example areas when the table is empty.
+  schema:
+    image: postgis/postgis:17-3.4
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - PGPASSWORD=heat_relief
+    volumes:
+      - ./backend/src/db:/schema:ro
+    entrypoint:
+      - sh
+      - -ec
+      - |
+        export DATABASE_URL="postgres://heat_relief:heat_relief@db:5432/heat_relief"
+        if [ "$(psql "$$DATABASE_URL" -tAc "SELECT to_regclass('public.sites') IS NOT NULL")" != "t" ]; then
+          echo "Applying schema..."
+          psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /schema/schema.sql
+        fi
+        if [ "$(psql "$$DATABASE_URL" -tAc "SELECT count(*) FROM areas")" = "0" ]; then
+          echo "Seeding example areas..."
+          psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /schema/seed_areas.sql
+        fi
+        echo "Schema up to date."
+
+  api:
+    image: node:22-slim
+    restart: on-failure
+    depends_on:
+      db:
+        condition: service_healthy
+      schema:
+        condition: service_completed_successfully
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    environment:
+      - DATABASE_URL=postgres://heat_relief:heat_relief@db:5432/heat_relief
+      - PORT=4000
+      - BASE44_PREVIEW_MODE
+    # env_file entries are optional per-file; the platform-managed file is
+    # the only source of external secrets (Twilio etc.) when present.
+    command:
+      - sh
+      - -ec
+      - npm ci --no-audit --no-fund && exec npm run dev
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  web:
+    image: nginx:1.27-alpine
+    restart: on-failure
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./docker/base44-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -qO- http://127.0.0.1/ | grep -q "Heat Relief Network" && wget -qO- http://127.0.0.1/health | grep -q '"ok"'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  db_data:
+  backend_node_modules:

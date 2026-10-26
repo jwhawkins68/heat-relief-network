@@ -8,16 +8,29 @@ the earlier mock-data prototype.
   detail (inventory) on click, and a regional heat-alert banner.
 - `admin.html` — org portal: loads an org's sites by org ID and lets you
   update each site's status (open/closed/full/unknown).
-- `js/config.js` — the one thing you'll likely need to edit: `API_BASE`.
+- `js/config.js` — the API base URL: same-origin (`/api/...`) by default;
+  set `window.HRN_API_BASE` to point at a separate API host.
 - `js/api.js` — all `fetch()` calls to the backend, one function per
   endpoint.
 - `js/app.js`, `js/admin.js` — page logic.
 
 ## Running it
 
+Easiest: run the whole stack (database + API + this folder) from the repo
+root and open <http://localhost:3000>:
+
+```bash
+docker compose -f docker-compose.base44.yml up -d
+```
+
+The web server serving this folder proxies `/api/*` and `/health` to the
+backend, so the frontend and API share one origin — that's why
+`js/config.js` defaults `API_BASE` to same-origin.
+
+To run it by hand instead:
+
 1. Start the backend first (see the root README) — it needs to be
-   reachable at the URL in `js/config.js` (defaults to
-   `http://localhost:4000`) and already has CORS enabled.
+   reachable from the browser and already has CORS enabled.
 2. Serve this folder as static files — any static server works, e.g.:
 
    ```bash
@@ -26,7 +39,11 @@ the earlier mock-data prototype.
    python3 -m http.server 5173
    ```
 
-3. Open `index.html` (resident view) or `admin.html` (org portal) in the
+3. Point the page at the API: with a plain static server there's no `/api`
+   proxy, so set `window.HRN_API_BASE = 'http://localhost:4000';` before
+   `js/config.js` loads (a small inline `<script>` in the page, or a
+   one-off DevTools edit).
+4. Open `index.html` (resident view) or `admin.html` (org portal) in the
    browser.
 
 There's no bundler/npm install here on purpose, to keep the scaffold easy

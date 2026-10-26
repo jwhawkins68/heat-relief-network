@@ -1,0 +1,22 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d --build",
+  "secrets": [
+    {
+      "name": "TWILIO_ACCOUNT_SID",
+      "description": "Optional. Twilio SMS notifications (Phase 1+, stubbed in code) — Twilio console dashboard. Not needed to boot.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "TWILIO_AUTH_TOKEN",
+      "description": "Optional. Twilio auth token for SMS notifications — Twilio console dashboard. Not needed to boot.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "TWILIO_FROM_NUMBER",
+      "description": "Optional. Twilio sending number for SMS alerts. Not needed to boot.",
+      "requiredAtBoot": false
+    }
+  ]
+}
